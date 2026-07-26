@@ -160,6 +160,23 @@
     .token-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
     .token { border: 1px solid var(--border); border-radius: 14px; padding: 12px; background: rgba(148,163,184,.04); }
     .token-swatch { height: 42px; border-radius: 10px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,.06); }
+    .tool-card {
+      cursor: pointer; transition: .2s ease; min-height: 150px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .tool-card:hover { border-color: rgba(45,212,191,.35); transform: translateY(-1px); }
+    .tool-card .tool-icon {
+      width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+      font-size: 11px; font-weight: 700;
+    }
+    .tool-card .tool-link {
+      margin-top: auto; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint);
+    }
+    .external-frame {
+      width: 100%; min-height: 72vh; border: 1px solid var(--border); border-radius: var(--radius);
+      background: #fff;
+    }
+    .menu-loading { color: var(--muted); font-size: 12px; padding: 8px 10px; }
     @media (max-width: 1180px) {
       .grid.cols-4, .grid.cols-3 { grid-template-columns: repeat(2, minmax(0,1fr)); }
       .diagram-layout { grid-template-columns: 1fr; }
@@ -196,18 +213,14 @@
 
       <div class="nav-section">
         <div class="nav-title">Herramientas</div>
-        <button class="nav-btn" data-view="diagramador"><span>Diagramador de Procesos</span><span class="nav-dot"></span></button>
-        <button class="nav-btn" data-view="flujo-valor"><span>Mapeo de Flujo de Valor</span><span class="nav-dot"></span></button>
-        <button class="nav-btn" data-view="procedimientos"><span>Generador de Procedimientos</span><span class="nav-dot"></span></button>
-        <button class="nav-btn" data-view="bpm-gap"><span>BPM Gap Analyzer</span><span class="nav-dot"></span></button>
-        <button class="nav-btn" data-view="proyectai"><span>ProyectAI</span><span class="nav-dot"></span></button>
-        <button class="nav-btn" data-view="riskguard"><span>RiskGuard AI</span><span class="nav-dot"></span></button>
-        <button class="nav-btn" data-view="linkedin360"><span>LinkedIn360</span><span class="nav-dot"></span></button>
+        <div id="dynamic-tools-nav">
+          <div class="menu-loading">Cargando menú...</div>
+        </div>
       </div>
 
       <div class="nav-section" style="margin-top:28px; padding-top:16px; border-top:1px solid rgba(148,163,184,.12);">
-        <div class="nav-title">Administraci├│n</div>
-        <button class="nav-btn" data-view="admin"><span>Panel de administraci├│n</span><span class="nav-dot"></span></button>
+        <div class="nav-title">Administración</div>
+        <button class="nav-btn" data-href="/admin.html"><span>Panel de administración</span><span class="nav-dot"></span></button>
       </div>
     </aside>
 
@@ -270,11 +283,19 @@
         </div>
         <div class="card" style="margin-top:16px;">
           <h3>Ecosistema de herramientas</h3>
-          <div class="grid cols-3">
-            <div class="card"><h4>RiskGuard AI</h4><p class="muted">Monitoreo de riesgos, incidentes y controles de cumplimiento desde un solo workspace.</p></div>
-            <div class="card"><h4>BPM Gap Analyzer</h4><p class="muted">Comparaci├│n entre procesos actuales y objetivo con priorizaci├│n de brechas.</p></div>
-            <div class="card"><h4>ProyectAI</h4><p class="muted">Centro de control para iniciativas, responsables, hitos y avance.</p></div>
+          <div id="dynamic-tools-grid" class="grid cols-3">
+            <div class="menu-loading">Cargando herramientas del menú...</div>
           </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-external-tool">
+        <div class="page-header">
+          <h2 id="external-tool-title">Herramienta</h2>
+          <p id="external-tool-desc">Contenido cargado dinámicamente desde el menú publicado.</p>
+        </div>
+        <div class="card" style="padding:12px;">
+          <iframe id="external-tool-frame" class="external-frame" title="Herramienta embebida"></iframe>
         </div>
       </section>
 
@@ -475,37 +496,197 @@
   </div>
 
   <script>
-    const navButtons = document.querySelectorAll('.nav-btn');
+    let navButtons = document.querySelectorAll('.nav-btn');
     const views = document.querySelectorAll('.view');
     const topbarTitle = document.getElementById('topbar-title');
     const topbarSubtitle = document.getElementById('topbar-subtitle');
     const sidebar = document.getElementById('sidebar');
     const mobileToggle = document.getElementById('mobileToggle');
+    const dynamicSubtitles = {};
+
+    const VIEW_MAP = {
+      diagramador: 'diagramador',
+      vsm: 'flujo-valor',
+      procedimientos: 'procedimientos',
+      'gap-analyzer': 'bpm-gap',
+      'project-ai': 'proyectai',
+      riskguard: 'riskguard',
+      'linkedin-360': 'linkedin360'
+    };
+
+    const ACCENT_BG = {
+      yellow: 'rgba(212,182,58,.15)',
+      violet: 'rgba(167,139,250,.15)',
+      blue: 'rgba(129,140,248,.15)',
+      teal: 'rgba(45,212,191,.15)',
+      pink: 'rgba(236,72,153,.15)',
+      cyan: 'rgba(34,211,238,.15)',
+      linkedin: 'rgba(59,158,255,.15)'
+    };
+
+    const ACCENT_FG = {
+      yellow: '#d4b63a',
+      violet: '#a78bfa',
+      blue: '#818cf8',
+      teal: '#2dd4bf',
+      pink: '#ec4899',
+      cyan: '#22d3ee',
+      linkedin: '#3b9eff'
+    };
 
     const subtitles = {
-      general: 'Centro de control operativo, riesgo y documentaci├│n.',
+      general: 'Centro de control operativo, riesgo y documentación.',
       diagramador: 'Carga documentos y genera despliegues visuales de procesos.',
       'flujo-valor': 'Mapa de tiempos, esperas y valor agregado del flujo.',
-      procedimientos: 'Construye SOPs profesionales en espa├▒ol.',
+      procedimientos: 'Construye SOPs profesionales en español.',
       'bpm-gap': 'Detecta brechas entre procesos actuales y objetivo.',
       proyectai: 'Seguimiento de proyectos, hitos y responsables.',
-      riskguard: 'Monitoreo de riesgos, incidentes y mitigaci├│n.',
+      riskguard: 'Monitoreo de riesgos, incidentes y mitigación.',
       linkedin360: 'Inteligencia comercial y networking operativo.',
-      admin: 'Control de usuarios, roles y actividad.'
+      admin: 'Control de usuarios, roles y actividad.',
+      'external-tool': 'Herramienta publicada en el menú dinámico.'
     };
+
+    function bindNavButtons() {
+      navButtons = document.querySelectorAll('.nav-btn');
+    }
+
+    sidebar.addEventListener('click', (event) => {
+      const btn = event.target.closest('.nav-btn');
+      if (!btn) return;
+      if (btn.dataset.href) {
+        window.location.href = btn.dataset.href;
+        return;
+      }
+      if (btn.dataset.external) {
+        openExternalTool(btn.dataset.external, btn.dataset.title || 'Herramienta', btn.dataset.description || '');
+        return;
+      }
+      if (btn.dataset.view) activateView(btn.dataset.view);
+    });
 
     function activateView(name) {
       views.forEach(v => v.classList.toggle('active', v.id === `view-${name}`));
-      navButtons.forEach(b => b.classList.toggle('active', b.dataset.view === name));
-      const text = [...navButtons].find(b => b.dataset.view === name)?.innerText.trim() || 'General';
+      navButtons.forEach(b => {
+        const matchesView = b.dataset.view === name;
+        const matchesExternal = name === 'external-tool' && b.classList.contains('external-active');
+        b.classList.toggle('active', matchesView || matchesExternal);
+      });
+      const text = [...navButtons].find(b => b.dataset.view === name || (name === 'external-tool' && b.classList.contains('external-active')))?.dataset.title
+        || [...navButtons].find(b => b.dataset.view === name)?.innerText.trim()
+        || 'General';
       topbarTitle.textContent = text;
-      topbarSubtitle.textContent = subtitles[name] || 'RiskGuard AI Suite';
+      topbarSubtitle.textContent = dynamicSubtitles[name] || subtitles[name] || 'RiskGuard AI Suite';
       sidebar.classList.remove('open');
     }
 
-    navButtons.forEach(btn => btn.addEventListener('click', () => activateView(btn.dataset.view)));
+    function openExternalTool(href, title, description) {
+      document.getElementById('external-tool-title').textContent = title;
+      document.getElementById('external-tool-desc').textContent = description;
+      document.getElementById('external-tool-frame').src = href;
+      dynamicSubtitles['external-tool'] = description;
+      navButtons.forEach(b => b.classList.remove('external-active'));
+      const match = [...navButtons].find(b => b.dataset.external === href);
+      if (match) match.classList.add('external-active');
+      activateView('external-tool');
+    }
+
+    function resolveMenuItem(item) {
+      if (item.href.startsWith('/tools/')) {
+        return { type: 'external', href: item.href };
+      }
+      if (item.href.startsWith('http')) {
+        return { type: 'link', href: item.href };
+      }
+      if (item.href === '/admin' || item.href === '/admin.html') {
+        return { type: 'link', href: '/admin.html' };
+      }
+      if (item.href === '/riskguard' || item.href === '/riskguard.html') {
+        return { type: 'view', view: 'riskguard' };
+      }
+      if (item.href === '/general' || item.href === '/general.html') {
+        return { type: 'view', view: 'general' };
+      }
+      const view = VIEW_MAP[item.id];
+      if (view) return { type: 'view', view };
+      if (item.href && item.href !== '#') {
+        return { type: 'link', href: item.href };
+      }
+      return null;
+    }
+
+    function createNavButton(item, action) {
+      const btn = document.createElement('button');
+      btn.className = 'nav-btn';
+      btn.dataset.title = item.title;
+      btn.innerHTML = `<span>${item.title}</span><span class="nav-dot"></span>`;
+      if (action.type === 'view') btn.dataset.view = action.view;
+      if (action.type === 'external') {
+        btn.dataset.external = action.href;
+        btn.dataset.description = item.description;
+      }
+      if (action.type === 'link') btn.dataset.href = action.href;
+      dynamicSubtitles[action.view || item.id] = item.description;
+      subtitles[action.view || item.id] = item.description;
+      return btn;
+    }
+
+    function createToolCard(item, action) {
+      const card = document.createElement('div');
+      card.className = 'card tool-card';
+      const accent = item.accent || 'teal';
+      card.innerHTML = `
+        <div class="tool-icon" style="background:${ACCENT_BG[accent] || ACCENT_BG.teal}; color:${ACCENT_FG[accent] || ACCENT_FG.teal}">
+          ${item.icon ? item.icon.slice(0, 2).toUpperCase() : 'RG'}
+        </div>
+        <h4>${item.title}</h4>
+        <p class="muted">${item.description}</p>
+        <div class="tool-link">Acceder</div>
+      `;
+      card.addEventListener('click', () => {
+        if (action.type === 'view') activateView(action.view);
+        else if (action.type === 'external') openExternalTool(action.href, item.title, item.description);
+        else if (action.type === 'link') window.location.href = action.href;
+      });
+      return card;
+    }
+
+    async function loadDynamicMenu() {
+      const navHost = document.getElementById('dynamic-tools-nav');
+      const gridHost = document.getElementById('dynamic-tools-grid');
+      try {
+        const response = await fetch('/data/menu.json?t=' + Date.now(), { cache: 'no-store' });
+        if (!response.ok) throw new Error('menu.json no disponible');
+        const menu = await response.json();
+        const items = (menu.items || []).filter(item => item.published && item.id !== 'dashboard-legacy');
+
+        navHost.innerHTML = '';
+        gridHost.innerHTML = '';
+
+        items.forEach(item => {
+          const action = resolveMenuItem(item);
+          if (!action) return;
+          navHost.appendChild(createNavButton(item, action));
+          gridHost.appendChild(createToolCard(item, action));
+        });
+
+        if (!items.length) {
+          navHost.innerHTML = '<div class="menu-loading">No hay herramientas publicadas.</div>';
+          gridHost.innerHTML = '<div class="menu-loading">Publica herramientas desde /admin.html</div>';
+        }
+
+        bindNavButtons();
+      } catch (error) {
+        navHost.innerHTML = '<div class="menu-loading">No se pudo cargar el menú dinámico.</div>';
+        gridHost.innerHTML = '<div class="menu-loading">Usa /admin.html para publicar el menú.</div>';
+        console.error(error);
+      }
+    }
+
+    bindNavButtons();
     document.querySelector('[data-view-link="general"]').addEventListener('click', () => activateView('general'));
     mobileToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+    loadDynamicMenu();
 
     const fileInput = document.getElementById('fileInput');
     const uploadZone = document.getElementById('uploadZone');
