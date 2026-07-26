@@ -172,6 +172,42 @@
     .proc-status.error { color: #f87171; }
     .proc-status.ok { color: var(--primary); }
     .proc-diagram-title { margin: 18px 0 10px; font-size: 14px; color: var(--muted); }
+    .vsm-table input, .vsm-table select { width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: rgba(15,21,41,.75); color: var(--text); font-size: 13px; }
+    .vsm-table td { vertical-align: middle; }
+    .vsm-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .vsm-metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin: 16px 0; }
+    .vsm-metric { padding: 14px; border-radius: 14px; background: rgba(148,163,184,.04); border: 1px solid var(--border); }
+    .vsm-metric .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .vsm-metric .value { font-size: 22px; font-weight: 700; }
+    .vsm-metric.va .value { color: var(--primary); }
+    .vsm-metric.nva .value { color: #fbbf24; }
+    .vsm-bottleneck { padding: 12px 14px; border-radius: 14px; background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.25); margin-bottom: 16px; font-size: 14px; }
+    .vsm-timeline-wrap { overflow-x: auto; padding: 8px 4px 12px; }
+    .vsm-timeline { display: flex; align-items: stretch; min-width: max-content; gap: 0; }
+    .vsm-unit { display: flex; align-items: center; }
+    .vsm-process {
+      min-width: 170px; padding: 14px; border-radius: 14px;
+      background: linear-gradient(180deg, rgba(27,36,64,.98), rgba(17,23,42,.98));
+      border: 2px solid rgba(45,212,191,.35);
+    }
+    .vsm-process.nva { border-color: rgba(251,191,36,.45); }
+    .vsm-process .name { font-weight: 700; margin-bottom: 8px; }
+    .vsm-process .time { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .vsm-process .badge-inline { display: inline-block; margin-top: 8px; font-size: 10px; padding: 2px 8px; border-radius: 999px; }
+    .vsm-wait {
+      min-width: 90px; padding: 10px 8px; text-align: center; color: var(--muted); font-size: 11px;
+      border-bottom: 2px dashed rgba(148,163,184,.35); margin: 0 6px; align-self: center;
+    }
+    .vsm-wait strong { display: block; color: #fbbf24; font-size: 12px; margin-bottom: 4px; }
+    .vsm-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+    .vsm-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .vsm-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+    .vsm-legend i.va { background: rgba(45,212,191,.75); }
+    .vsm-legend i.nva { background: rgba(251,191,36,.75); }
+    .vsm-status { font-size: 13px; margin-bottom: 12px; }
+    .vsm-status.error { color: #f87171; }
+    .vsm-status.ok { color: var(--primary); }
+    @media (max-width: 980px) { .vsm-metrics { grid-template-columns: repeat(2, minmax(0,1fr)); } }
     .flow-arrow { width: 36px; height: 2px; background: linear-gradient(90deg, rgba(45,212,191,.25), rgba(45,212,191,.8)); position: relative; }
     .flow-arrow::after { content: ""; position: absolute; right: -2px; top: -4px; border-left: 8px solid var(--primary); border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
     .process-loading { color: var(--primary); font-size: 13px; padding: 12px 0; }
@@ -387,16 +423,43 @@
           <h2>Mapeo de Flujo de Valor</h2>
           <p>Visualiza etapas, tiempos y valor agregado para identificar desperdicios y cuellos de botella.</p>
         </div>
-        <div class="card">
-          <table>
-            <thead><tr><th>Etapa</th><th>Tiempo de ciclo</th><th>Tiempo de espera</th><th>Responsable</th><th>Valor</th></tr></thead>
-            <tbody>
-              <tr><td>Recepci├│n</td><td>15 min</td><td>10 min</td><td>Operaciones</td><td><span class="badge info">Valor agregado</span></td></tr>
-              <tr><td>Validaci├│n</td><td>30 min</td><td>4 h</td><td>Control interno</td><td><span class="badge warning">No valor agregado</span></td></tr>
-              <tr><td>Aprobaci├│n</td><td>20 min</td><td>2 h</td><td>Gerencia</td><td><span class="badge info">Valor agregado</span></td></tr>
-              <tr><td>Registro</td><td>12 min</td><td>35 min</td><td>Administraci├│n</td><td><span class="badge info">Valor agregado</span></td></tr>
-            </tbody>
-          </table>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3 style="margin-top:0;">Etapas del proceso</h3>
+            <p class="muted" style="margin-bottom:12px;">Edita la tabla y pulsa "Generar VSM" para calcular metricas y visualizar el flujo de valor.</p>
+            <div style="overflow-x:auto;">
+              <table class="vsm-table">
+                <thead>
+                  <tr>
+                    <th>Etapa</th>
+                    <th>Tiempo de ciclo</th>
+                    <th>Tiempo de espera</th>
+                    <th>Responsable</th>
+                    <th>Valor</th>
+                  </tr>
+                </thead>
+                <tbody id="vsmTableBody"></tbody>
+              </table>
+            </div>
+            <div class="vsm-actions">
+              <button type="button" class="btn ghost" id="vsmAddRow">Agregar etapa</button>
+              <button type="button" class="btn primary" id="generarVsm">Generar VSM</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3 style="margin-top:0;">Mapa de flujo de valor</h3>
+            <div id="vsmStatus" class="vsm-status muted">Pulsa "Generar VSM" para construir el diagrama y los totales.</div>
+            <div id="vsmOutput" hidden>
+              <div id="vsmMetrics" class="vsm-metrics"></div>
+              <div id="vsmBottleneck" class="vsm-bottleneck"></div>
+              <div class="vsm-legend">
+                <span><i class="va"></i> Valor agregado (ciclo)</span>
+                <span><i class="nva"></i> No valor agregado</span>
+                <span>--- Espera entre etapas</span>
+              </div>
+              <div id="vsmDiagram"></div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -526,6 +589,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="./js/process-engine.js"></script>
   <script src="./js/procedure-engine.js"></script>
+  <script src="./js/vsm-engine.js"></script>
   <script>
     if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1180,6 +1244,132 @@
           copiarProcedimiento.textContent = 'No disponible';
           setTimeout(() => { copiarProcedimiento.textContent = 'Copiar resultado'; }, 1500);
         }
+      });
+    }
+
+    const vsmTableBody = document.getElementById('vsmTableBody');
+    const generarVsmBtn = document.getElementById('generarVsm');
+    const vsmAddRowBtn = document.getElementById('vsmAddRow');
+    const vsmStatus = document.getElementById('vsmStatus');
+    const vsmOutput = document.getElementById('vsmOutput');
+    const vsmMetrics = document.getElementById('vsmMetrics');
+    const vsmBottleneck = document.getElementById('vsmBottleneck');
+    const vsmDiagram = document.getElementById('vsmDiagram');
+
+    function createVsmRow(stage) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input data-field="etapa" value="${escapeHtml(stage.etapa || '')}" placeholder="Etapa" /></td>
+        <td><input data-field="ciclo" value="${escapeHtml(stage.ciclo || '')}" placeholder="15 min" /></td>
+        <td><input data-field="espera" value="${escapeHtml(stage.espera || '')}" placeholder="10 min" /></td>
+        <td><input data-field="responsable" value="${escapeHtml(stage.responsable || '')}" placeholder="Responsable" /></td>
+        <td>
+          <select data-field="valor">
+            <option value="valor" ${stage.valor !== 'no-valor' ? 'selected' : ''}>Valor agregado</option>
+            <option value="no-valor" ${stage.valor === 'no-valor' ? 'selected' : ''}>No valor agregado</option>
+          </select>
+        </td>
+      `;
+      return tr;
+    }
+
+    function readVsmTableRows() {
+      if (!vsmTableBody) return [];
+      return [...vsmTableBody.querySelectorAll('tr')].map((row) => ({
+        etapa: row.querySelector('[data-field="etapa"]')?.value || '',
+        ciclo: row.querySelector('[data-field="ciclo"]')?.value || '',
+        espera: row.querySelector('[data-field="espera"]')?.value || '',
+        responsable: row.querySelector('[data-field="responsable"]')?.value || '',
+        valor: row.querySelector('[data-field="valor"]')?.value || 'valor',
+      }));
+    }
+
+    function initVsmTable() {
+      if (!vsmTableBody || !window.VsmEngine) return;
+      vsmTableBody.innerHTML = '';
+      VsmEngine.DEFAULT_STAGES.forEach((stage) => {
+        vsmTableBody.appendChild(createVsmRow(stage));
+      });
+    }
+
+    function renderVsmMetrics(metrics) {
+      vsmMetrics.innerHTML = `
+        <div class="vsm-metric"><div class="label">Lead time</div><div class="value">${escapeHtml(metrics.leadTimeLabel)}</div></div>
+        <div class="vsm-metric va"><div class="label">Valor agregado</div><div class="value">${escapeHtml(metrics.valueAddedLabel)}</div></div>
+        <div class="vsm-metric nva"><div class="label">No valor agregado</div><div class="value">${escapeHtml(metrics.nonValueAddedLabel)}</div></div>
+        <div class="vsm-metric"><div class="label">% valor agregado</div><div class="value">${escapeHtml(metrics.valueAddedPctLabel)}</div></div>
+        <div class="vsm-metric"><div class="label">Tiempo total ciclo</div><div class="value">${escapeHtml(metrics.totalCycleLabel)}</div></div>
+        <div class="vsm-metric"><div class="label">Tiempo total espera</div><div class="value">${escapeHtml(metrics.totalWaitLabel)}</div></div>
+      `;
+    }
+
+    function renderVsmDiagram(stages) {
+      const timeline = document.createElement('div');
+      timeline.className = 'vsm-timeline-wrap';
+      timeline.innerHTML = '<div class="vsm-timeline"></div>';
+      const inner = timeline.querySelector('.vsm-timeline');
+
+      stages.forEach((stage, index) => {
+        const unit = document.createElement('div');
+        unit.className = 'vsm-unit';
+
+        const process = document.createElement('div');
+        process.className = `vsm-process ${stage.valor === 'no-valor' ? 'nva' : 'va'}`;
+        process.innerHTML = `
+          <div class="name">${escapeHtml(stage.etapa)}</div>
+          <div class="time">Ciclo: ${escapeHtml(stage.ciclo || VsmEngine.formatMinutes(stage.cicloMin))}</div>
+          <div class="time">Responsable: ${escapeHtml(stage.responsable || 'N/D')}</div>
+          <span class="badge-inline badge ${stage.valor === 'no-valor' ? 'warning' : 'info'}">${escapeHtml(stage.valorLabel)}</span>
+        `;
+        unit.appendChild(process);
+        inner.appendChild(unit);
+
+        if (index < stages.length - 1) {
+          const wait = document.createElement('div');
+          wait.className = 'vsm-wait';
+          wait.innerHTML = `<strong>${escapeHtml(stage.espera || VsmEngine.formatMinutes(stage.esperaMin))}</strong>Espera`;
+          inner.appendChild(wait);
+        }
+      });
+
+      vsmDiagram.innerHTML = '';
+      vsmDiagram.appendChild(timeline);
+    }
+
+    function generateVsm() {
+      if (!window.VsmEngine) {
+        vsmStatus.textContent = 'Error: motor VSM no cargado.';
+        vsmStatus.className = 'vsm-status error';
+        return;
+      }
+
+      const stages = VsmEngine.parseStages(readVsmTableRows());
+      const errors = VsmEngine.validateStages(stages);
+
+      if (errors.length) {
+        vsmStatus.textContent = errors.join(' ');
+        vsmStatus.className = 'vsm-status error';
+        vsmOutput.hidden = true;
+        return;
+      }
+
+      const metrics = VsmEngine.calculateMetrics(stages);
+      const bottleneck = VsmEngine.detectBottleneck(stages);
+
+      renderVsmMetrics(metrics);
+      vsmBottleneck.innerHTML = `<strong>Cuello de botella:</strong> ${escapeHtml(bottleneck.label)}`;
+      renderVsmDiagram(stages);
+
+      vsmOutput.hidden = false;
+      vsmStatus.textContent = `VSM generado con ${stages.length} etapa(s). Lead time: ${metrics.leadTimeLabel}.`;
+      vsmStatus.className = 'vsm-status ok';
+    }
+
+    if (vsmTableBody && window.VsmEngine) initVsmTable();
+    if (generarVsmBtn) generarVsmBtn.addEventListener('click', generateVsm);
+    if (vsmAddRowBtn) {
+      vsmAddRowBtn.addEventListener('click', () => {
+        vsmTableBody?.appendChild(createVsmRow({ etapa: '', ciclo: '', espera: '', responsable: '', valor: 'valor' }));
       });
     }
   </script>
