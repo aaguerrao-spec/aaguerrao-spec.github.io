@@ -324,13 +324,13 @@
         <div class="diagram-layout">
           <div class="card">
             <h3>Carga de documentos</h3>
-            <label class="upload-zone" id="uploadZone">
+            <div class="upload-zone" id="uploadZone" role="button" tabindex="0" aria-label="Zona para cargar documentos">
               <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt" style="display:none" />
-              <strong>Arrastra tus documentos aqu├¡</strong>
-              <p class="muted">o haz clic en ÔÇ£Seleccionar documentoÔÇØ</p>
+              <strong>Arrastra tus documentos aquí</strong>
+              <p class="muted">o haz clic en "Seleccionar documento"</p>
               <button type="button" class="btn primary" id="selectFileBtn">Seleccionar documento</button>
               <p class="muted" style="margin-top:12px;">Formatos permitidos: PDF, DOCX, DOC, XLSX, XLS, CSV, TXT</p>
-            </label>
+            </div>
             <div id="statusMessage" class="muted" style="margin-top:12px;">Sin documentos cargados.</div>
             <div class="file-list" id="fileList"></div>
           </div>
@@ -588,6 +588,9 @@
       topbarTitle.textContent = text;
       topbarSubtitle.textContent = dynamicSubtitles[name] || subtitles[name] || 'RiskGuard AI Suite';
       sidebar.classList.remove('open');
+      if (name === 'diagramador' && uploadedFiles.length) {
+        generateDiagram();
+      }
     }
 
     function openExternalTool(href, title, description) {
@@ -719,6 +722,18 @@
 
     const allowedExtensions = ['pdf', 'docx', 'doc', 'xlsx', 'xls', 'csv', 'txt'];
 
+    function createFileId() {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+      }
+      return 'file-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+    }
+
+    function reportProcessError(message) {
+      statusMessage.textContent = message;
+      console.error(message);
+    }
+
     function formatSize(bytes) {
       if (bytes < 1024) return `${bytes} B`;
       if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -786,73 +801,102 @@
     }
 
     function generateDiagram() {
-      const file = uploadedFiles.find(f => f.id === selectedFileId);
-      if (!file) {
-        processSummary.textContent = 'Selecciona un documento para generar el diagrama.';
-        diagramContainer.innerHTML = `<div class="empty-state"><div><h3>No hay diagrama generado</h3><p>Sube y selecciona un documento.</p></div></div>`;
-        return;
+      try {
+        const file = uploadedFiles.find(f => f.id === selectedFileId);
+        if (!file) {
+          processSummary.textContent = 'Selecciona un documento para generar el diagrama.';
+          diagramContainer.innerHTML = `<div class="empty-state"><div><h3>No hay diagrama generado</h3><p>Sube y selecciona un documento.</p></div></div>`;
+          return;
+        }
+        const steps = detectProcessSteps(file.name);
+        processSummary.textContent = `Proceso detectado a partir del archivo "${file.name}". Se genero un flujo estimado de ${steps.length} pasos.`;
+        diagramContainer.innerHTML = '';
+        const summaryCard = document.createElement('div');
+        summaryCard.className = 'card';
+        summaryCard.style.marginTop = '16px';
+        summaryCard.innerHTML = `<h3>Resumen del proceso detectado</h3><p class="muted">El sistema simulo el analisis del documento y desplego un proceso orientativo basado en el nombre del archivo.</p>`;
+        const list = document.createElement('div');
+        list.className = 'list';
+        steps.forEach((step, idx) => {
+          const item = document.createElement('div');
+          item.className = 'list-item';
+          item.innerHTML = `<span>${idx + 1}. ${step}</span><span class="badge success">Detectado</span>`;
+          list.appendChild(item);
+        });
+        summaryCard.appendChild(renderFlow(steps));
+        summaryCard.appendChild(list);
+        diagramContainer.appendChild(summaryCard);
+      } catch (error) {
+        reportProcessError('No se pudo generar el diagrama del proceso.');
       }
-      const steps = detectProcessSteps(file.name);
-      processSummary.textContent = `Proceso detectado a partir del archivo ÔÇ£${file.name}ÔÇØ. Se gener├│ un flujo estimado de ${steps.length} pasos.`;
-      diagramContainer.innerHTML = '';
-      const summaryCard = document.createElement('div');
-      summaryCard.className = 'card';
-      summaryCard.style.marginTop = '16px';
-      summaryCard.innerHTML = `<h3>Resumen del proceso detectado</h3><p class="muted">El sistema simul├│ el an├ílisis del documento y despleg├│ un proceso orientativo basado en el nombre del archivo.</p>`;
-      const list = document.createElement('div');
-      list.className = 'list';
-      steps.forEach((step, idx) => {
-        const item = document.createElement('div');
-        item.className = 'list-item';
-        item.innerHTML = `<span>${idx + 1}. ${step}</span><span class="badge success">Detectado</span>`;
-        list.appendChild(item);
-      });
-      summaryCard.appendChild(renderFlow(steps));
-      summaryCard.appendChild(list);
-      diagramContainer.appendChild(summaryCard);
     }
 
     function handleFiles(fileListObj) {
-      const files = [...fileListObj];
-      const valid = files.filter(file => {
-        const ext = file.name.split('.').pop().toLowerCase();
-        return allowedExtensions.includes(ext);
-      });
-      if (!valid.length) {
-        statusMessage.textContent = 'No se cargaron archivos v├ílidos. Usa PDF, DOCX, DOC, XLSX, XLS, CSV o TXT.';
-        return;
+      try {
+        const files = [...fileListObj];
+        const valid = files.filter(file => {
+          const parts = file.name.split('.');
+          if (parts.length < 2) return false;
+          const ext = parts.pop().toLowerCase();
+          return allowedExtensions.includes(ext);
+        });
+        if (!valid.length) {
+          statusMessage.textContent = 'No se cargaron archivos validos. Usa PDF, DOCX, DOC, XLSX, XLS, CSV o TXT.';
+          return;
+        }
+        valid.forEach(file => {
+          uploadedFiles.unshift({
+            id: createFileId(),
+            name: file.name,
+            size: formatSize(file.size),
+            date: new Date().toLocaleString('es-ES'),
+            status: 'Cargado'
+          });
+        });
+        selectedFileId = uploadedFiles[0].id;
+        renderFileList();
+        generateDiagram();
+        fileInput.value = '';
+      } catch (error) {
+        reportProcessError('Error al procesar los documentos cargados.');
       }
-      valid.forEach(file => {
-        const entry = {
-          id: crypto.randomUUID(),
-          name: file.name,
-          size: formatSize(file.size),
-          date: new Date().toLocaleString('es-ES'),
-          status: 'Cargado'
-        };
-        uploadedFiles.unshift(entry);
-      });
-      selectedFileId = uploadedFiles[0].id;
-      renderFileList();
-      generateDiagram();
     }
 
     selectFileBtn.addEventListener('click', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       fileInput.click();
     });
 
-    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+    uploadZone.addEventListener('click', (e) => {
+      if (e.target.closest('#selectFileBtn') || e.target.closest('#fileInput')) return;
+      fileInput.click();
+    });
+
+    uploadZone.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        fileInput.click();
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files?.length) handleFiles(e.target.files);
+    });
 
     ['dragenter', 'dragover'].forEach(evt => uploadZone.addEventListener(evt, e => {
       e.preventDefault();
+      e.stopPropagation();
       uploadZone.classList.add('drag');
     }));
     ['dragleave', 'drop'].forEach(evt => uploadZone.addEventListener(evt, e => {
       e.preventDefault();
+      e.stopPropagation();
       uploadZone.classList.remove('drag');
     }));
-    uploadZone.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+    uploadZone.addEventListener('drop', e => {
+      if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
+    });
 
     generateBtn.addEventListener('click', generateDiagram);
     clearBtn.addEventListener('click', () => {
