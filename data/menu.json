@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "updatedAt": "2026-07-26T00:00:00.000Z",
+  "items": [
+    {
+      "id": "diagramador",
+      "title": "Diagramador de procesos",
+      "description": "Convierte descripciones o notas de voz en diagramas BPMN listos para usar.",
+      "href": "#",
+      "icon": "Workflow",
+      "accent": "yellow",
+      "published": true
+    },
+    {
+      "id": "vsm",
+      "title": "Mapeo de Flujo de Valor",
+      "description": "Analiza tus procesos y genera diagramas VSM estableciendo tiempos y variables.",
+      "href": "#",
+      "icon": "GitBranch",
+      "accent": "violet",
+      "published": true
+    },
+    {
+      "id": "procedimientos",
+      "title": "Generador de Procedimientos",
+      "description": "Suite completa interactiva para transformación Lean, matriz de priorización y más.",
+      "href": "#",
+      "icon": "FileText",
+      "accent": "blue",
+      "published": true
+    },
+    {
+      "id": "gap-analyzer",
+      "title": "BPM Gap Analyzer",
+      "description": "Analiza e identifica brechas en diagramas proporcionados y extrae métricas.",
+      "href": "#",
+      "icon": "ScanSearch",
+      "accent": "teal",
+      "published": true
+    },
+    {
+      "id": "project-ai",
+      "title": "Project AI",
+      "description": "Arquitecto de proyectos. Genera alcance preliminar, stack tecnológico y dependencias.",
+      "href": "#",
+      "icon": "FolderKanban",
+      "accent": "pink",
+      "published": true
+    },
+    {
+      "id": "riskguard",
+      "title": "RiskGuard AI",
+      "description": "Identificador y calificador de riesgos para asegurar entregas y mitigar eventos.",
+      "href": "/riskguard",
+      "icon": "ShieldAlert",
+      "accent": "cyan",
+      "published": true
+    },
+    {
+      "id": "linkedin-360",
+      "title": "LinkedIn 360",
+      "description": "Auditoría integral de perfil profesional con generación de tácticas y mejoras SEO.",
+      "href": "#",
+      "icon": "CircleUserRound",
+      "accent": "linkedin",
+      "published": true
+    },
+    {
+      "id": "dashboard-legacy",
+      "title": "Dashboard completo (legacy)",
+      "description": "Versión HTML completa del dashboard con todas las vistas integradas.",
+      "href": "/dashboard.html",
+      "icon": "LayoutGrid",
+      "accent": "violet",
+      "published": true
+    }
+  ]
+}
