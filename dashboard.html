@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RiskGuard AI Suite</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #11172a;
+      --surface: #151d34;
+      --surface-2: #1b2440;
+      --surface-3: #0f1529;
+      --sidebar: #0a1120;
+      --border: rgba(148, 163, 184, 0.18);
+      --text: #e6edf7;
+      --muted: #95a3bf;
+      --faint: #6b7a96;
+      --primary: #2dd4bf;
+      --primary-2: #22c7d6;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #f43f5e;
+      --radius: 18px;
+      --radius-sm: 12px;
+      --shadow: 0 10px 30px rgba(0,0,0,.28);
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: linear-gradient(180deg, #09101d, #0c1220 35%, #0b1020); color: var(--text); font-family: var(--font); }
+    body { min-height: 100vh; }
+    .app { display: grid; grid-template-columns: 290px 1fr; min-height: 100vh; }
+    .sidebar {
+      background: linear-gradient(180deg, rgba(10,17,32,.98), rgba(7,13,26,.98));
+      border-right: 1px solid var(--border);
+      padding: 22px 18px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px;
+      background: linear-gradient(135deg, rgba(45,212,191,.12), rgba(34,199,214,.05));
+      border: 1px solid rgba(45,212,191,.18); cursor: pointer; margin-bottom: 22px;
+    }
+    .logo-mark {
+      width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #04212a; font-weight: 800;
+    }
+    .logo-text { line-height: 1.2; }
+    .logo-text strong { display: block; font-size: 14px; }
+    .logo-text span { color: var(--muted); font-size: 12px; }
+    .nav-section { margin: 18px 0; }
+    .nav-title { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); padding: 8px 10px; }
+    .nav-btn {
+      width: 100%; border: 0; background: transparent; color: var(--text); padding: 12px 14px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; cursor: pointer;
+      transition: .2s ease; text-align: left;
+    }
+    .nav-btn:hover { background: rgba(148,163,184,.08); }
+    .nav-btn.active {
+      background: linear-gradient(135deg, rgba(45,212,191,.16), rgba(34,199,214,.08));
+      border: 1px solid rgba(45,212,191,.22);
+      box-shadow: inset 0 0 0 1px rgba(45,212,191,.05);
+    }
+    .nav-dot { width: 8px; height: 8px; border-radius: 999px; background: transparent; }
+    .nav-btn.active .nav-dot { background: var(--primary); box-shadow: 0 0 10px rgba(45,212,191,.6); }
+    .content { padding: 22px; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px;
+      background: rgba(21,29,52,.72); border: 1px solid var(--border); padding: 14px 16px; border-radius: var(--radius);
+      backdrop-filter: blur(8px);
+    }
+    .topbar h1 { margin: 0; font-size: 18px; }
+    .topbar p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+    .top-actions { display: flex; gap: 10px; align-items: center; }
+    .chip, .btn {
+      border-radius: 999px; border: 1px solid var(--border); padding: 10px 14px; background: var(--surface-3); color: var(--text);
+      font-size: 13px;
+    }
+    .btn.primary { background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #07252a; border: 0; font-weight: 700; cursor: pointer; }
+    .btn.ghost { background: transparent; cursor: pointer; }
+    .view { display: none; }
+    .view.active { display: block; }
+    .page-header { margin: 6px 0 18px; }
+    .page-header h2 { margin: 0 0 6px; font-size: 28px; }
+    .page-header p { margin: 0; color: var(--muted); max-width: 80ch; }
+    .grid { display: grid; gap: 16px; }
+    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .card {
+      background: linear-gradient(180deg, rgba(21,29,52,.96), rgba(15,21,41,.96));
+      border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px;
+    }
+    .card h3, .card h4 { margin-top: 0; }
+    .kpi { position: relative; overflow: hidden; }
+    .kpi::after {
+      content: ""; position: absolute; inset: auto -40px -40px auto; width: 120px; height: 120px; border-radius: 999px;
+      background: radial-gradient(circle, rgba(45,212,191,.16), transparent 65%);
+    }
+    .kpi .label { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+    .kpi .value { font-size: 30px; font-weight: 800; margin-bottom: 8px; }
+    .kpi .meta { color: var(--faint); font-size: 12px; }
+    .list { display: grid; gap: 10px; }
+    .list-item {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      padding: 12px 14px; border-radius: 14px; background: rgba(148,163,184,.05); border: 1px solid rgba(148,163,184,.08);
+    }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border); }
+    .badge.success { color: #c7f9d8; background: rgba(34,197,94,.12); }
+    .badge.warning { color: #ffe9b6; background: rgba(245,158,11,.12); }
+    .badge.danger { color: #ffd0da; background: rgba(244,63,94,.12); }
+    .badge.info { color: #c7f9f3; background: rgba(45,212,191,.12); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid rgba(148,163,184,.1); text-align: left; font-size: 13px; }
+    th { color: var(--muted); font-weight: 600; }
+    input, select, textarea {
+      width: 100%; background: var(--surface-3); color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: rgba(45,212,191,.55); box-shadow: 0 0 0 3px rgba(45,212,191,.12); }
+    label { display: block; font-size: 13px; margin-bottom: 6px; color: var(--muted); }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+    .full { grid-column: 1 / -1; }
+    .progress { height: 10px; border-radius: 999px; background: rgba(148,163,184,.12); overflow: hidden; }
+    .progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-2)); border-radius: inherit; }
+    .diagram-layout { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
+    .upload-zone {
+      border: 1.5px dashed rgba(45,212,191,.35); border-radius: 16px; padding: 22px; text-align: center;
+      background: linear-gradient(180deg, rgba(45,212,191,.06), rgba(34,199,214,.03)); cursor: pointer;
+    }
+    .upload-zone.drag { background: rgba(45,212,191,.12); border-color: rgba(45,212,191,.75); }
+    .file-list { display: grid; gap: 10px; margin-top: 14px; }
+    .file-item {
+      padding: 12px; border-radius: 14px; background: rgba(148,163,184,.05); border: 1px solid rgba(148,163,184,.12); cursor: pointer;
+    }
+    .file-item.active { border-color: rgba(45,212,191,.5); background: rgba(45,212,191,.09); }
+    .muted { color: var(--muted); }
+    .empty-state {
+      min-height: 240px; display: grid; place-items: center; text-align: center; color: var(--muted);
+      border-radius: 18px; border: 1px dashed rgba(148,163,184,.18); background: rgba(15,21,41,.55); padding: 20px;
+    }
+    .flow-wrap { overflow-x: auto; }
+    .flow { display: flex; gap: 14px; align-items: center; min-width: max-content; padding: 12px 4px; }
+    .flow-step {
+      min-width: 180px; padding: 16px; border-radius: 16px; background: linear-gradient(180deg, rgba(27,36,64,.98), rgba(17,23,42,.98));
+      border: 1px solid rgba(45,212,191,.18); position: relative;
+    }
+    .flow-step .small { color: var(--faint); font-size: 12px; margin-bottom: 8px; }
+    .flow-arrow { width: 36px; height: 2px; background: linear-gradient(90deg, rgba(45,212,191,.25), rgba(45,212,191,.8)); position: relative; }
+    .flow-arrow::after { content: ""; position: absolute; right: -2px; top: -4px; border-left: 8px solid var(--primary); border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+    .mobile-toggle { display: none; }
+    .design-system {
+      margin-bottom: 18px; background: linear-gradient(180deg, rgba(14,20,37,.95), rgba(11,16,32,.95));
+      border: 1px solid var(--border); border-radius: var(--radius); padding: 18px;
+    }
+    .design-system h2 { margin-top: 0; }
+    .token-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+    .token { border: 1px solid var(--border); border-radius: 14px; padding: 12px; background: rgba(148,163,184,.04); }
+    .token-swatch { height: 42px; border-radius: 10px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,.06); }
+    @media (max-width: 1180px) {
+      .grid.cols-4, .grid.cols-3 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .diagram-layout { grid-template-columns: 1fr; }
+      .token-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+    @media (max-width: 860px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar {
+        position: fixed; left: 0; top: 0; bottom: 0; width: 300px; transform: translateX(-102%); transition: .25s ease; z-index: 30;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .mobile-toggle { display: inline-flex; }
+      .content { padding: 14px; }
+      .grid.cols-4, .grid.cols-3, .grid.cols-2, .form-grid, .token-grid { grid-template-columns: 1fr; }
+      .topbar { position: sticky; top: 10px; z-index: 20; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="logo" data-view-link="general">
+        <div class="logo-mark">RG</div>
+        <div class="logo-text">
+          <strong>RiskGuard AI Suite</strong>
+          <span>Plataforma enterprise de riesgo y procesos</span>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-title">Navegación</div>
+        <button class="nav-btn active" data-view="general"><span>General</span><span class="nav-dot"></span></button>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-title">Herramientas</div>
+        <button class="nav-btn" data-view="diagramador"><span>Diagramador de Procesos</span><span class="nav-dot"></span></button>
+        <button class="nav-btn" data-view="flujo-valor"><span>Mapeo de Flujo de Valor</span><span class="nav-dot"></span></button>
+        <button class="nav-btn" data-view="procedimientos"><span>Generador de Procedimientos</span><span class="nav-dot"></span></button>
+        <button class="nav-btn" data-view="bpm-gap"><span>BPM Gap Analyzer</span><span class="nav-dot"></span></button>
+        <button class="nav-btn" data-view="proyectai"><span>ProyectAI</span><span class="nav-dot"></span></button>
+        <button class="nav-btn" data-view="riskguard"><span>RiskGuard AI</span><span class="nav-dot"></span></button>
+        <button class="nav-btn" data-view="linkedin360"><span>LinkedIn360</span><span class="nav-dot"></span></button>
+      </div>
+
+      <div class="nav-section" style="margin-top:28px; padding-top:16px; border-top:1px solid rgba(148,163,184,.12);">
+        <div class="nav-title">Administración</div>
+        <button class="nav-btn" data-view="admin"><span>Panel de administración</span><span class="nav-dot"></span></button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <section class="design-system">
+        <h2>Design System</h2>
+        <p class="muted">Sistema visual enterprise en español para RiskGuard AI Suite: paleta oscura de alta confianza, acentos cian/teal para acciones y estados activos, tipografía sans moderna, cards elevadas, componentes consistentes y navegación lateral persistente.</p>
+        <div class="token-grid">
+          <div class="token"><div class="token-swatch" style="background:#0b1020"></div><strong>--bg</strong><div class="muted">Fondo principal</div></div>
+          <div class="token"><div class="token-swatch" style="background:#151d34"></div><strong>--surface</strong><div class="muted">Superficies y paneles</div></div>
+          <div class="token"><div class="token-swatch" style="background:#2dd4bf"></div><strong>--primary</strong><div class="muted">CTA y estado activo</div></div>
+          <div class="token"><div class="token-swatch" style="background:#22c7d6"></div><strong>--primary-2</strong><div class="muted">Acento secundario</div></div>
+        </div>
+      </section>
+
+      <div class="topbar">
+        <div>
+          <h1 id="topbar-title">General</h1>
+          <p id="topbar-subtitle">Centro de control operativo, riesgo y documentación.</p>
+        </div>
+        <div class="top-actions">
+          <button class="btn ghost mobile-toggle" id="mobileToggle">Menú</button>
+          <div class="chip">Modo oscuro activo</div>
+          <button class="btn primary">Nuevo análisis</button>
+        </div>
+      </div>
+
+      <section class="view active" id="view-general">
+        <div class="page-header">
+          <h2>General</h2>
+          <p>Vista consolidada del estado de procesos, riesgos, procedimientos y proyectos en seguimiento dentro del ecosistema RiskGuard AI Suite.</p>
+        </div>
+        <div class="grid cols-4">
+          <div class="card kpi"><div class="label">Procesos activos</div><div class="value">48</div><div class="meta">+6% en los últimos 30 días</div></div>
+          <div class="card kpi"><div class="label">Riesgos abiertos</div><div class="value">17</div><div class="meta">5 con prioridad alta</div></div>
+          <div class="card kpi"><div class="label">Procedimientos generados</div><div class="value">126</div><div class="meta">32 actualizados este mes</div></div>
+          <div class="card kpi"><div class="label">Proyectos en seguimiento</div><div class="value">9</div><div class="meta">3 críticos por fecha objetivo</div></div>
+        </div>
+        <div class="grid cols-2" style="margin-top:16px;">
+          <div class="card">
+            <h3>Actividad reciente</h3>
+            <div class="list">
+              <div class="list-item"><div><strong>Procedimiento de respuesta a incidentes</strong><div class="muted">Actualizado por María González</div></div><span class="badge info">Hace 12 min</span></div>
+              <div class="list-item"><div><strong>Mapa de flujo de compras</strong><div class="muted">Se detectó un cuello de botella en validación</div></div><span class="badge warning">En revisión</span></div>
+              <div class="list-item"><div><strong>Gap analysis BPM</strong><div class="muted">3 brechas críticas identificadas</div></div><span class="badge danger">Alta prioridad</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Resumen operativo</h3>
+            <table>
+              <thead><tr><th>Módulo</th><th>Estado</th><th>Indicador</th></tr></thead>
+              <tbody>
+                <tr><td>Diagramador de Procesos</td><td><span class="badge success">Operativo</span></td><td>14 diagramas generados</td></tr>
+                <tr><td>Generador de Procedimientos</td><td><span class="badge success">Estable</span></td><td>97% consistencia documental</td></tr>
+                <tr><td>ProyectAI</td><td><span class="badge warning">Carga media</span></td><td>2 hitos en riesgo</td></tr>
+                <tr><td>LinkedIn360</td><td><span class="badge info">Activo</span></td><td>23 prospectos nuevos</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <h3>Ecosistema de herramientas</h3>
+          <div class="grid cols-3">
+            <div class="card"><h4>RiskGuard AI</h4><p class="muted">Monitoreo de riesgos, incidentes y controles de cumplimiento desde un solo workspace.</p></div>
+            <div class="card"><h4>BPM Gap Analyzer</h4><p class="muted">Comparación entre procesos actuales y objetivo con priorización de brechas.</p></div>
+            <div class="card"><h4>ProyectAI</h4><p class="muted">Centro de control para iniciativas, responsables, hitos y avance.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-riskguard">
+        <div class="page-header">
+          <h2>RiskGuard AI</h2>
+          <p>Workspace de inteligencia operativa para monitoreo de riesgos, incidentes, controles y acciones de mitigación.</p>
+        </div>
+        <div class="grid cols-4">
+          <div class="card"><h4>Monitoreo de riesgos</h4><div class="value">84%</div><div class="muted">Cobertura de riesgos críticos identificados</div></div>
+          <div class="card"><h4>Detección de incidentes</h4><div class="value">12</div><div class="muted">Incidentes detectados esta semana</div></div>
+          <div class="card"><h4>Controles de cumplimiento</h4><div class="value">93%</div><div class="muted">Controles efectivos y evidenciados</div></div>
+          <div class="card"><h4>Acciones de mitigación</h4><div class="value">31</div><div class="muted">Planes activos con seguimiento</div></div>
+        </div>
+        <div class="grid cols-2" style="margin-top:16px;">
+          <div class="card"><h3>Radar operativo</h3><p class="muted">La matriz actual muestra exposición alta en continuidad operativa, media en ciberseguridad y baja en proveedores estratégicos.</p></div>
+          <div class="card"><h3>Priorización</h3><div class="list"><div class="list-item"><span>Continuidad operativa</span><span class="badge danger">Alta</span></div><div class="list-item"><span>Gestión de terceros</span><span class="badge warning">Media</span></div><div class="list-item"><span>Segregación de funciones</span><span class="badge info">Monitoreo</span></div></div></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-diagramador">
+        <div class="page-header">
+          <h2>Diagramador de Procesos</h2>
+          <p>Sube documentos desde tu computadora y genera un despliegue visual del proceso en frontend a partir del nombre del archivo.</p>
+        </div>
+        <div class="diagram-layout">
+          <div class="card">
+            <h3>Carga de documentos</h3>
+            <label class="upload-zone" id="uploadZone">
+              <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt" style="display:none" />
+              <strong>Arrastra tus documentos aquí</strong>
+              <p class="muted">o haz clic en “Seleccionar documento”</p>
+              <button type="button" class="btn primary" id="selectFileBtn">Seleccionar documento</button>
+              <p class="muted" style="margin-top:12px;">Formatos permitidos: PDF, DOCX, DOC, XLSX, XLS, CSV, TXT</p>
+            </label>
+            <div id="statusMessage" class="muted" style="margin-top:12px;">Sin documentos cargados.</div>
+            <div class="file-list" id="fileList"></div>
+          </div>
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+              <div>
+                <h3 style="margin-bottom:6px;">Despliegue del proceso</h3>
+                <div class="muted" id="processSummary">Selecciona un documento para generar el diagrama.</div>
+              </div>
+              <div style="display:flex; gap:10px;">
+                <button class="btn primary" id="generateBtn">Generar diagrama</button>
+                <button class="btn ghost" id="clearBtn">Limpiar</button>
+              </div>
+            </div>
+            <div id="diagramContainer" style="margin-top:16px;">
+              <div class="empty-state">
+                <div>
+                  <h3>No hay diagrama generado</h3>
+                  <p>Sube un documento y selecciona uno de la lista para generar automáticamente el flujo del proceso.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-flujo-valor">
+        <div class="page-header">
+          <h2>Mapeo de Flujo de Valor</h2>
+          <p>Visualiza etapas, tiempos y valor agregado para identificar desperdicios y cuellos de botella.</p>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>Etapa</th><th>Tiempo de ciclo</th><th>Tiempo de espera</th><th>Responsable</th><th>Valor</th></tr></thead>
+            <tbody>
+              <tr><td>Recepción</td><td>15 min</td><td>10 min</td><td>Operaciones</td><td><span class="badge info">Valor agregado</span></td></tr>
+              <tr><td>Validación</td><td>30 min</td><td>4 h</td><td>Control interno</td><td><span class="badge warning">No valor agregado</span></td></tr>
+              <tr><td>Aprobación</td><td>20 min</td><td>2 h</td><td>Gerencia</td><td><span class="badge info">Valor agregado</span></td></tr>
+              <tr><td>Registro</td><td>12 min</td><td>35 min</td><td>Administración</td><td><span class="badge info">Valor agregado</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="view-procedimientos">
+        <div class="page-header">
+          <h2>Generador de Procedimientos</h2>
+          <p>Crea procedimientos tipo SOP en español con estructura clara y lista para copiar.</p>
+        </div>
+        <div class="grid cols-2">
+          <div class="card">
+            <div class="form-grid">
+              <div><label>Nombre del procedimiento</label><input id="procNombre" value="Gestión de incidentes" /></div>
+              <div><label>Responsable</label><input id="procResponsable" value="Oficial de cumplimiento" /></div>
+              <div class="full"><label>Objetivo</label><textarea id="procObjetivo">Establecer pasos estandarizados para registrar, evaluar y tratar incidentes.</textarea></div>
+              <div class="full"><label>Alcance</label><textarea id="procAlcance">Aplica a todas las áreas con eventos operativos o de cumplimiento.</textarea></div>
+              <div><label>Entradas</label><textarea id="procEntradas">Reporte inicial, evidencia, clasificación preliminar</textarea></div>
+              <div><label>Salidas</label><textarea id="procSalidas">Incidente registrado, plan de acción, cierre documentado</textarea></div>
+              <div class="full"><label>Pasos</label><textarea id="procPasos">1. Recibir reporte
+2. Validar información
+3. Clasificar incidente
+4. Definir responsable
+5. Implementar acción
+6. Verificar cierre</textarea></div>
+            </div>
+            <div style="margin-top:14px;"><button class="btn primary" id="generarProcedimiento">Generar procedimiento</button></div>
+          </div>
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <h3>Salida del procedimiento</h3>
+              <button class="btn ghost" id="copiarProcedimiento">Copiar resultado</button>
+            </div>
+            <pre id="procedimientoOutput" style="white-space:pre-wrap; color:var(--text); background:rgba(148,163,184,.04); border:1px solid var(--border); padding:14px; border-radius:14px; min-height:320px;">Pulsa “Generar procedimiento” para construir el SOP.</pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-bpm-gap">
+        <div class="page-header">
+          <h2>BPM Gap Analyzer</h2>
+          <p>Compara el proceso actual frente al objetivo y prioriza brechas de impacto.</p>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>Proceso actual</th><th>Proceso objetivo</th><th>Brecha</th><th>Impacto</th><th>Prioridad</th><th>Acción sugerida</th></tr></thead>
+            <tbody>
+              <tr><td>Validación manual por correo</td><td>Validación automatizada con reglas</td><td>Retraso y reproceso</td><td>Alto</td><td><span class="badge danger">Crítica</span></td><td>Implementar motor de validación</td></tr>
+              <tr><td>Aprobación en dos sistemas</td><td>Aprobación centralizada</td><td>Duplicidad operativa</td><td>Medio</td><td><span class="badge warning">Media</span></td><td>Unificar puntos de control</td></tr>
+              <tr><td>Seguimiento informal</td><td>Trazabilidad completa</td><td>Falta de evidencia</td><td>Alto</td><td><span class="badge danger">Alta</span></td><td>Configurar bitácora de estados</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="view-proyectai">
+        <div class="page-header">
+          <h2>ProyectAI</h2>
+          <p>Centro de control de proyectos, hitos, avances y responsables.</p>
+        </div>
+        <div class="grid cols-3">
+          <div class="card"><h4>Transformación BPM</h4><p class="muted">Responsable: Laura Medina</p><div class="progress"><span style="width:72%"></span></div><p class="muted">Fecha objetivo: 28/09/2026</p></div>
+          <div class="card"><h4>Automatización de controles</h4><p class="muted">Responsable: Andrés Silva</p><div class="progress"><span style="width:48%"></span></div><p class="muted">Fecha objetivo: 15/10/2026</p></div>
+          <div class="card"><h4>Gobierno documental</h4><p class="muted">Responsable: Paula Ríos</p><div class="progress"><span style="width:88%"></span></div><p class="muted">Fecha objetivo: 02/08/2026</p></div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <h3>Iniciativas</h3>
+          <table>
+            <thead><tr><th>Iniciativa</th><th>Estado</th><th>Responsable</th><th>Avance</th><th>Fecha objetivo</th></tr></thead>
+            <tbody>
+              <tr><td>Modelo de procesos críticos</td><td><span class="badge info">En curso</span></td><td>Laura Medina</td><td>72%</td><td>28/09/2026</td></tr>
+              <tr><td>Repositorio SOP</td><td><span class="badge success">Controlado</span></td><td>Paula Ríos</td><td>88%</td><td>02/08/2026</td></tr>
+              <tr><td>Plan de brechas BPM</td><td><span class="badge warning">Atención</span></td><td>Andrés Silva</td><td>48%</td><td>15/10/2026</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="view-linkedin360">
+        <div class="page-header">
+          <h2>LinkedIn360</h2>
+          <p>Panel de inteligencia comercial y networking para seguimiento de prospectos y relaciones clave.</p>
+        </div>
+        <div class="grid cols-4">
+          <div class="card"><h4>Prospectos</h4><div class="value">64</div><div class="muted">Nuevos en el trimestre</div></div>
+          <div class="card"><h4>Interacciones</h4><div class="value">138</div><div class="muted">Mensajes y reuniones</div></div>
+          <div class="card"><h4>Oportunidades</h4><div class="value">19</div><div class="muted">Pipeline activo</div></div>
+          <div class="card"><h4>Seguimiento pendiente</h4><div class="value">11</div><div class="muted">Acciones por ejecutar</div></div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <table>
+            <thead><tr><th>Nombre</th><th>Empresa</th><th>Cargo</th><th>Estado</th><th>Última interacción</th></tr></thead>
+            <tbody>
+              <tr><td>Camila Torres</td><td>NovaCorp</td><td>Directora de Operaciones</td><td><span class="badge info">Seguimiento</span></td><td>Hace 2 días</td></tr>
+              <tr><td>Javier Ortega</td><td>Andina Risk</td><td>Gerente de Riesgos</td><td><span class="badge success">Interés alto</span></td><td>Hoy</td></tr>
+              <tr><td>Lucía Herrera</td><td>Innova BPM</td><td>Líder de Procesos</td><td><span class="badge warning">Esperando respuesta</span></td><td>Hace 5 días</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="view-admin">
+        <div class="page-header">
+          <h2>Panel de administración</h2>
+          <p>Gestión básica de usuarios, roles y actividad reciente.</p>
+        </div>
+        <div class="grid cols-3">
+          <div class="card"><h4>Usuarios activos</h4><div class="value">27</div></div>
+          <div class="card"><h4>Roles definidos</h4><div class="value">5</div></div>
+          <div class="card"><h4>Accesos auditados</h4><div class="value">100%</div></div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <table>
+            <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Última actividad</th></tr></thead>
+            <tbody>
+              <tr><td>María González</td><td>Administrador</td><td><span class="badge success">Activo</span></td><td>Hace 8 min</td></tr>
+              <tr><td>Paula Ríos</td><td>Documentación</td><td><span class="badge success">Activo</span></td><td>Hace 21 min</td></tr>
+              <tr><td>Andrés Silva</td><td>PMO</td><td><span class="badge warning">Ausente</span></td><td>Ayer</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const views = document.querySelectorAll('.view');
+    const topbarTitle = document.getElementById('topbar-title');
+    const topbarSubtitle = document.getElementById('topbar-subtitle');
+    const sidebar = document.getElementById('sidebar');
+    const mobileToggle = document.getElementById('mobileToggle');
+
+    const subtitles = {
+      general: 'Centro de control operativo, riesgo y documentación.',
+      diagramador: 'Carga documentos y genera despliegues visuales de procesos.',
+      'flujo-valor': 'Mapa de tiempos, esperas y valor agregado del flujo.',
+      procedimientos: 'Construye SOPs profesionales en español.',
+      'bpm-gap': 'Detecta brechas entre procesos actuales y objetivo.',
+      proyectai: 'Seguimiento de proyectos, hitos y responsables.',
+      riskguard: 'Monitoreo de riesgos, incidentes y mitigación.',
+      linkedin360: 'Inteligencia comercial y networking operativo.',
+      admin: 'Control de usuarios, roles y actividad.'
+    };
+
+    function activateView(name) {
+      views.forEach(v => v.classList.toggle('active', v.id === `view-${name}`));
+      navButtons.forEach(b => b.classList.toggle('active', b.dataset.view === name));
+      const text = [...navButtons].find(b => b.dataset.view === name)?.innerText.trim() || 'General';
+      topbarTitle.textContent = text;
+      topbarSubtitle.textContent = subtitles[name] || 'RiskGuard AI Suite';
+      sidebar.classList.remove('open');
+    }
+
+    navButtons.forEach(btn => btn.addEventListener('click', () => activateView(btn.dataset.view)));
+    document.querySelector('[data-view-link="general"]').addEventListener('click', () => activateView('general'));
+    mobileToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+
+    const fileInput = document.getElementById('fileInput');
+    const uploadZone = document.getElementById('uploadZone');
+    const selectFileBtn = document.getElementById('selectFileBtn');
+    const fileList = document.getElementById('fileList');
+    const statusMessage = document.getElementById('statusMessage');
+    const diagramContainer = document.getElementById('diagramContainer');
+    const processSummary = document.getElementById('processSummary');
+    const generateBtn = document.getElementById('generateBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    let uploadedFiles = [];
+    let selectedFileId = null;
+
+    const allowedExtensions = ['pdf', 'docx', 'doc', 'xlsx', 'xls', 'csv', 'txt'];
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function detectProcessSteps(filename) {
+      const name = filename.toLowerCase();
+      if (name.includes('onboarding') || name.includes('cliente')) {
+        return ['Recepción de solicitud', 'Validación inicial', 'Revisión documental', 'Aprobación', 'Alta en sistema', 'Seguimiento'];
+      }
+      if (name.includes('riesgo') || name.includes('risk')) {
+        return ['Identificación de riesgo', 'Evaluación', 'Clasificación', 'Plan de tratamiento', 'Monitoreo', 'Cierre'];
+      }
+      if (name.includes('compra') || name.includes('proveedor')) {
+        return ['Solicitud de compra', 'Validación presupuestal', 'Cotización', 'Aprobación', 'Orden de compra', 'Recepción'];
+      }
+      if (name.includes('incidente')) {
+        return ['Registro', 'Clasificación', 'Asignación', 'Tratamiento', 'Validación', 'Cierre'];
+      }
+      return ['Ingreso del documento', 'Interpretación del flujo', 'Validación del proceso', 'Definición de responsables', 'Control operativo', 'Cierre del despliegue'];
+    }
+
+    function renderFileList() {
+      fileList.innerHTML = '';
+      if (!uploadedFiles.length) {
+        statusMessage.textContent = 'Sin documentos cargados.';
+        return;
+      }
+      statusMessage.textContent = `${uploadedFiles.length} documento(s) cargado(s). Selecciona uno para generar el diagrama.`;
+      uploadedFiles.forEach(file => {
+        const el = document.createElement('div');
+        el.className = `file-item ${file.id === selectedFileId ? 'active' : ''}`;
+        el.innerHTML = `
+          <strong>${file.name}</strong>
+          <div class="muted" style="margin-top:6px; font-size:12px;">${file.size} · ${file.date}</div>
+          <div style="margin-top:8px;"><span class="badge info">${file.status}</span></div>
+        `;
+        el.addEventListener('click', () => {
+          selectedFileId = file.id;
+          renderFileList();
+          generateDiagram();
+        });
+        fileList.appendChild(el);
+      });
+    }
+
+    function renderFlow(steps) {
+      const flow = document.createElement('div');
+      flow.className = 'flow-wrap';
+      flow.innerHTML = `<div class="flow"></div>`;
+      const inner = flow.querySelector('.flow');
+      steps.forEach((step, index) => {
+        const stepEl = document.createElement('div');
+        stepEl.className = 'flow-step';
+        stepEl.innerHTML = `<div class="small">Paso ${index + 1}</div><strong>${step}</strong>`;
+        inner.appendChild(stepEl);
+        if (index < steps.length - 1) {
+          const arrow = document.createElement('div');
+          arrow.className = 'flow-arrow';
+          inner.appendChild(arrow);
+        }
+      });
+      return flow;
+    }
+
+    function generateDiagram() {
+      const file = uploadedFiles.find(f => f.id === selectedFileId);
+      if (!file) {
+        processSummary.textContent = 'Selecciona un documento para generar el diagrama.';
+        diagramContainer.innerHTML = `<div class="empty-state"><div><h3>No hay diagrama generado</h3><p>Sube y selecciona un documento.</p></div></div>`;
+        return;
+      }
+      const steps = detectProcessSteps(file.name);
+      processSummary.textContent = `Proceso detectado a partir del archivo “${file.name}”. Se generó un flujo estimado de ${steps.length} pasos.`;
+      diagramContainer.innerHTML = '';
+      const summaryCard = document.createElement('div');
+      summaryCard.className = 'card';
+      summaryCard.style.marginTop = '16px';
+      summaryCard.innerHTML = `<h3>Resumen del proceso detectado</h3><p class="muted">El sistema simuló el análisis del documento y desplegó un proceso orientativo basado en el nombre del archivo.</p>`;
+      const list = document.createElement('div');
+      list.className = 'list';
+      steps.forEach((step, idx) => {
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        item.innerHTML = `<span>${idx + 1}. ${step}</span><span class="badge success">Detectado</span>`;
+        list.appendChild(item);
+      });
+      summaryCard.appendChild(renderFlow(steps));
+      summaryCard.appendChild(list);
+      diagramContainer.appendChild(summaryCard);
+    }
+
+    function handleFiles(fileListObj) {
+      const files = [...fileListObj];
+      const valid = files.filter(file => {
+        const ext = file.name.split('.').pop().toLowerCase();
+        return allowedExtensions.includes(ext);
+      });
+      if (!valid.length) {
+        statusMessage.textContent = 'No se cargaron archivos válidos. Usa PDF, DOCX, DOC, XLSX, XLS, CSV o TXT.';
+        return;
+      }
+      valid.forEach(file => {
+        const entry = {
+          id: crypto.randomUUID(),
+          name: file.name,
+          size: formatSize(file.size),
+          date: new Date().toLocaleString('es-ES'),
+          status: 'Cargado'
+        };
+        uploadedFiles.unshift(entry);
+      });
+      selectedFileId = uploadedFiles[0].id;
+      renderFileList();
+      generateDiagram();
+    }
+
+    selectFileBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+    ['dragenter', 'dragover'].forEach(evt => uploadZone.addEventListener(evt, e => {
+      e.preventDefault();
+      uploadZone.classList.add('drag');
+    }));
+    ['dragleave', 'drop'].forEach(evt => uploadZone.addEventListener(evt, e => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag');
+    }));
+    uploadZone.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+
+    generateBtn.addEventListener('click', generateDiagram);
+    clearBtn.addEventListener('click', () => {
+      uploadedFiles = [];
+      selectedFileId = null;
+      fileInput.value = '';
+      renderFileList();
+      generateDiagram();
+    });
+
+    const generarProcedimiento = document.getElementById('generarProcedimiento');
+    const copiarProcedimiento = document.getElementById('copiarProcedimiento');
+    const procedimientoOutput = document.getElementById('procedimientoOutput');
+
+    generarProcedimiento.addEventListener('click', () => {
+      const nombre = document.getElementById('procNombre').value;
+      const responsable = document.getElementById('procResponsable').value;
+      const objetivo = document.getElementById('procObjetivo').value;
+      const alcance = document.getElementById('procAlcance').value;
+      const entradas = document.getElementById('procEntradas').value;
+      const salidas = document.getElementById('procSalidas').value;
+      const pasos = document.getElementById('procPasos').value;
+
+      procedimientoOutput.textContent = `PROCEDIMIENTO: ${nombre}\n\n1. OBJETIVO\n${objetivo}\n\n2. ALCANCE\n${alcance}\n\n3. RESPONSABLE\n${responsable}\n\n4. ENTRADAS\n${entradas}\n\n5. SALIDAS\n${salidas}\n\n6. DESARROLLO DEL PROCEDIMIENTO\n${pasos}\n\n7. CONTROL Y SEGUIMIENTO\nToda ejecución deberá quedar registrada, validada y trazable para revisión posterior.\n\n8. CRITERIO DE CIERRE\nEl procedimiento se considera cerrado una vez se verifique la evidencia, se registre el resultado y se notifique a las partes interesadas.`;
+    });
+
+    copiarProcedimiento.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(procedimientoOutput.textContent);
+        copiarProcedimiento.textContent = 'Copiado';
+        setTimeout(() => copiarProcedimiento.textContent = 'Copiar resultado', 1500);
+      } catch {
+        copiarProcedimiento.textContent = 'No disponible';
+      }
+    });
+  </script>
+</body>
+</html>
