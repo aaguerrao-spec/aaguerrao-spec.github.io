@@ -155,6 +155,23 @@
     .flow-step-meta { display: grid; gap: 4px; margin-top: 10px; font-size: 11px; color: var(--muted); }
     .flow-step-meta span { display: block; }
     .flow-step-badge { display: inline-block; margin-top: 10px; font-size: 10px; padding: 3px 8px; border-radius: 999px; }
+    .flow-step.flow-start, .flow-step.flow-end {
+      min-width: 120px; text-align: center; border-color: rgba(45,212,191,.55);
+      background: linear-gradient(180deg, rgba(45,212,191,.12), rgba(17,23,42,.98));
+    }
+    .proc-document { display: grid; gap: 14px; }
+    .proc-section { padding: 12px 14px; border-radius: 14px; background: rgba(148,163,184,.04); border: 1px solid var(--border); }
+    .proc-section h4 { margin: 0 0 8px; font-size: 13px; color: var(--primary); text-transform: uppercase; letter-spacing: .04em; }
+    .proc-section p, .proc-section ul { margin: 0; color: var(--text); font-size: 14px; line-height: 1.55; }
+    .proc-section ul { padding-left: 18px; }
+    .proc-steps { display: grid; gap: 8px; }
+    .proc-step-item { padding: 10px 12px; border-radius: 12px; background: rgba(15,21,41,.55); border: 1px solid rgba(148,163,184,.12); }
+    .proc-step-item strong { display: block; margin-bottom: 4px; }
+    .proc-step-meta { font-size: 12px; color: var(--muted); }
+    .proc-status { font-size: 13px; margin-bottom: 12px; }
+    .proc-status.error { color: #f87171; }
+    .proc-status.ok { color: var(--primary); }
+    .proc-diagram-title { margin: 18px 0 10px; font-size: 14px; color: var(--muted); }
     .flow-arrow { width: 36px; height: 2px; background: linear-gradient(90deg, rgba(45,212,191,.25), rgba(45,212,191,.8)); position: relative; }
     .flow-arrow::after { content: ""; position: absolute; right: -2px; top: -4px; border-left: 8px solid var(--primary); border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
     .process-loading { color: var(--primary); font-size: 13px; padding: 12px 0; }
@@ -404,14 +421,17 @@
 5. Implementar acci├│n
 6. Verificar cierre</textarea></div>
             </div>
-            <div style="margin-top:14px;"><button class="btn primary" id="generarProcedimiento">Generar procedimiento</button></div>
+            <div style="margin-top:14px;"><button type="button" class="btn primary" id="generarProcedimiento">Generar procedimiento</button></div>
           </div>
           <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
               <h3>Salida del procedimiento</h3>
-              <button class="btn ghost" id="copiarProcedimiento">Copiar resultado</button>
+              <button type="button" class="btn ghost" id="copiarProcedimiento">Copiar resultado</button>
             </div>
-            <pre id="procedimientoOutput" style="white-space:pre-wrap; color:var(--text); background:rgba(148,163,184,.04); border:1px solid var(--border); padding:14px; border-radius:14px; min-height:320px;">Pulsa ÔÇ£Generar procedimientoÔÇØ para construir el SOP.</pre>
+            <div id="procedimientoStatus" class="proc-status muted">Pulsa "Generar procedimiento" para construir el SOP y su diagrama de flujo.</div>
+            <div id="procedimientoDocumento" class="proc-document" hidden></div>
+            <div id="procedimientoDiagrama" hidden></div>
+            <pre id="procedimientoOutput" hidden aria-hidden="true"></pre>
           </div>
         </div>
       </section>
@@ -505,6 +525,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="./js/process-engine.js"></script>
+  <script src="./js/procedure-engine.js"></script>
   <script>
     if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -964,6 +985,7 @@
       }
     }
 
+    if (fileInput && uploadZone && selectFileBtn && generateBtn && clearBtn && fileList && statusMessage && diagramContainer) {
     selectFileBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -1008,32 +1030,158 @@
       renderFileList();
       void generateDiagram();
     });
+    }
 
     const generarProcedimiento = document.getElementById('generarProcedimiento');
     const copiarProcedimiento = document.getElementById('copiarProcedimiento');
     const procedimientoOutput = document.getElementById('procedimientoOutput');
+    const procedimientoDocumento = document.getElementById('procedimientoDocumento');
+    const procedimientoDiagrama = document.getElementById('procedimientoDiagrama');
+    const procedimientoStatus = document.getElementById('procedimientoStatus');
 
-    generarProcedimiento.addEventListener('click', () => {
-      const nombre = document.getElementById('procNombre').value;
-      const responsable = document.getElementById('procResponsable').value;
-      const objetivo = document.getElementById('procObjetivo').value;
-      const alcance = document.getElementById('procAlcance').value;
-      const entradas = document.getElementById('procEntradas').value;
-      const salidas = document.getElementById('procSalidas').value;
-      const pasos = document.getElementById('procPasos').value;
+    function renderProcedureDocument(proc) {
+      procedimientoDocumento.innerHTML = `
+        <div class="proc-section">
+          <h4>${escapeHtml(proc.nombre)}</h4>
+          <p class="muted">Procedimiento operativo estandar (SOP)</p>
+        </div>
+        <div class="proc-section">
+          <h4>Objetivo</h4>
+          <p>${escapeHtml(proc.objetivo)}</p>
+        </div>
+        <div class="proc-section">
+          <h4>Alcance</h4>
+          <p>${escapeHtml(proc.alcance || 'No especificado.')}</p>
+        </div>
+        <div class="proc-section">
+          <h4>Responsable</h4>
+          <p>${escapeHtml(proc.responsable || 'No especificado.')}</p>
+        </div>
+        <div class="proc-section">
+          <h4>Entradas</h4>
+          <p>${escapeHtml(proc.entradas || 'No especificado.').replace(/,\s*/g, '<br>')}</p>
+        </div>
+        <div class="proc-section">
+          <h4>Salidas</h4>
+          <p>${escapeHtml(proc.salidas || 'No especificado.').replace(/,\s*/g, '<br>')}</p>
+        </div>
+        <div class="proc-section">
+          <h4>Pasos del procedimiento</h4>
+          <div class="proc-steps">
+            ${proc.pasos.map((step, index) => `
+              <div class="proc-step-item">
+                <strong>${index + 1}. ${escapeHtml(step.descripcion)}</strong>
+                ${step.responsable || step.entrada || step.salida ? `
+                  <div class="proc-step-meta">
+                    ${step.responsable ? `Responsable: ${escapeHtml(step.responsable)}` : ''}
+                    ${step.entrada ? `${step.responsable ? ' · ' : ''}Entrada: ${escapeHtml(step.entrada)}` : ''}
+                    ${step.salida ? `${step.responsable || step.entrada ? ' · ' : ''}Salida: ${escapeHtml(step.salida)}` : ''}
+                  </div>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      procedimientoDocumento.hidden = false;
+    }
 
-      procedimientoOutput.textContent = `PROCEDIMIENTO: ${nombre}\n\n1. OBJETIVO\n${objetivo}\n\n2. ALCANCE\n${alcance}\n\n3. RESPONSABLE\n${responsable}\n\n4. ENTRADAS\n${entradas}\n\n5. SALIDAS\n${salidas}\n\n6. DESARROLLO DEL PROCEDIMIENTO\n${pasos}\n\n7. CONTROL Y SEGUIMIENTO\nToda ejecuci├│n deber├í quedar registrada, validada y trazable para revisi├│n posterior.\n\n8. CRITERIO DE CIERRE\nEl procedimiento se considera cerrado una vez se verifique la evidencia, se registre el resultado y se notifique a las partes interesadas.`;
-    });
+    function renderProcedureFlow(nodes) {
+      const wrap = document.createElement('div');
+      wrap.className = 'flow-wrap';
+      wrap.innerHTML = '<div class="flow"></div>';
+      const inner = wrap.querySelector('.flow');
 
-    copiarProcedimiento.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(procedimientoOutput.textContent);
-        copiarProcedimiento.textContent = 'Copiado';
-        setTimeout(() => copiarProcedimiento.textContent = 'Copiar resultado', 1500);
-      } catch {
-        copiarProcedimiento.textContent = 'No disponible';
+      nodes.forEach((node, index) => {
+        const stepEl = document.createElement('div');
+        if (node.type === 'start') {
+          stepEl.className = 'flow-step flow-start';
+          stepEl.innerHTML = '<div class="small">Inicio</div><strong>Inicio</strong>';
+        } else if (node.type === 'end') {
+          stepEl.className = 'flow-step flow-end';
+          stepEl.innerHTML = '<div class="small">Cierre</div><strong>Fin</strong>';
+        } else {
+          stepEl.className = 'flow-step type-valor';
+          stepEl.innerHTML = `
+            <div class="small">Paso ${node.index}</div>
+            <strong>${escapeHtml(node.label)}</strong>
+            ${node.responsable ? `<div class="flow-step-meta"><span>Responsable: ${escapeHtml(node.responsable)}</span></div>` : ''}
+          `;
+        }
+        inner.appendChild(stepEl);
+        if (index < nodes.length - 1) {
+          const arrow = document.createElement('div');
+          arrow.className = 'flow-arrow';
+          inner.appendChild(arrow);
+        }
+      });
+
+      procedimientoDiagrama.innerHTML = '<div class="proc-diagram-title">Diagrama de flujo del procedimiento</div>';
+      procedimientoDiagrama.appendChild(wrap);
+      procedimientoDiagrama.hidden = false;
+    }
+
+    function generateProcedure() {
+      if (!window.ProcedureEngine) {
+        procedimientoStatus.textContent = 'Error: motor de procedimientos no cargado.';
+        procedimientoStatus.className = 'proc-status error';
+        return;
       }
-    });
+
+      const fields = {
+        nombre: document.getElementById('procNombre')?.value || '',
+        responsable: document.getElementById('procResponsable')?.value || '',
+        objetivo: document.getElementById('procObjetivo')?.value || '',
+        alcance: document.getElementById('procAlcance')?.value || '',
+        entradas: document.getElementById('procEntradas')?.value || '',
+        salidas: document.getElementById('procSalidas')?.value || '',
+        pasos: document.getElementById('procPasos')?.value || '',
+      };
+
+      const proc = ProcedureEngine.buildProcedure(fields);
+      const errors = ProcedureEngine.validateProcedure(proc);
+
+      if (errors.length) {
+        procedimientoStatus.textContent = errors.join(' ');
+        procedimientoStatus.className = 'proc-status error';
+        procedimientoDocumento.hidden = true;
+        procedimientoDiagrama.hidden = true;
+        procedimientoOutput.textContent = '';
+        return;
+      }
+
+      const text = ProcedureEngine.formatDocumentText(proc);
+      const nodes = ProcedureEngine.buildFlowNodes(proc);
+
+      procedimientoOutput.textContent = text;
+      renderProcedureDocument(proc);
+      renderProcedureFlow(nodes);
+
+      procedimientoStatus.textContent = `Procedimiento "${proc.nombre}" generado con ${proc.pasos.length} paso(s).`;
+      procedimientoStatus.className = 'proc-status ok';
+    }
+
+    if (generarProcedimiento) {
+      generarProcedimiento.addEventListener('click', generateProcedure);
+    }
+
+    if (copiarProcedimiento && procedimientoOutput) {
+      copiarProcedimiento.addEventListener('click', async () => {
+        if (!procedimientoOutput.textContent.trim()) {
+          copiarProcedimiento.textContent = 'Sin contenido';
+          setTimeout(() => { copiarProcedimiento.textContent = 'Copiar resultado'; }, 1500);
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(procedimientoOutput.textContent);
+          copiarProcedimiento.textContent = 'Copiado';
+          setTimeout(() => { copiarProcedimiento.textContent = 'Copiar resultado'; }, 1500);
+        } catch {
+          copiarProcedimiento.textContent = 'No disponible';
+          setTimeout(() => { copiarProcedimiento.textContent = 'Copiar resultado'; }, 1500);
+        }
+      });
+    }
   </script>
 </body>
 </html>
