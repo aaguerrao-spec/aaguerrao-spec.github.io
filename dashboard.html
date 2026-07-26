@@ -220,7 +220,7 @@
 
       <div class="nav-section" style="margin-top:28px; padding-top:16px; border-top:1px solid rgba(148,163,184,.12);">
         <div class="nav-title">Administración</div>
-        <button class="nav-btn" data-href="/admin.html"><span>Panel de administración</span><span class="nav-dot"></span></button>
+        <button class="nav-btn" data-href="./admin.html"><span>Panel de administración</span><span class="nav-dot"></span></button>
       </div>
     </aside>
 
@@ -534,6 +534,16 @@
       linkedin: '#3b9eff'
     };
 
+    function siteUrl(relativePath) {
+      const clean = String(relativePath || '').replace(/^\//, '');
+      return new URL(clean, window.location.href).href.split('?')[0];
+    }
+
+    function sitePath(relativePath) {
+      const clean = String(relativePath || '').replace(/^\//, '');
+      return new URL(clean, window.location.origin + '/').pathname;
+    }
+
     const subtitles = {
       general: 'Centro de control operativo, riesgo y documentación.',
       diagramador: 'Carga documentos y genera despliegues visuales de procesos.',
@@ -592,20 +602,26 @@
     }
 
     function resolveMenuItem(item) {
+      if (item.href.startsWith('./tools/') || item.href.startsWith('tools/')) {
+        return { type: 'external', href: sitePath(item.href.replace(/^\.\//, '')) };
+      }
       if (item.href.startsWith('/tools/')) {
-        return { type: 'external', href: item.href };
+        return { type: 'external', href: sitePath(item.href) };
       }
       if (item.href.startsWith('http')) {
         return { type: 'link', href: item.href };
       }
-      if (item.href === '/admin' || item.href === '/admin.html') {
-        return { type: 'link', href: '/admin.html' };
+      if (item.href === '/admin' || item.href === '/admin.html' || item.href === './admin.html') {
+        return { type: 'link', href: siteUrl('admin.html') };
       }
-      if (item.href === '/riskguard' || item.href === '/riskguard.html') {
-        return { type: 'view', view: 'riskguard' };
+      if (item.href === '/riskguard' || item.href === '/riskguard.html' || item.href === './riskguard.html') {
+        return { type: 'link', href: siteUrl('riskguard.html') };
       }
-      if (item.href === '/general' || item.href === '/general.html') {
+      if (item.href === '/general' || item.href === '/general.html' || item.href === './general.html') {
         return { type: 'view', view: 'general' };
+      }
+      if (item.href === '/dashboard.html' || item.href === './dashboard.html') {
+        return null;
       }
       const view = VIEW_MAP[item.id];
       if (view) return { type: 'view', view };
@@ -655,7 +671,7 @@
       const navHost = document.getElementById('dynamic-tools-nav');
       const gridHost = document.getElementById('dynamic-tools-grid');
       try {
-        const response = await fetch('/data/menu.json?t=' + Date.now(), { cache: 'no-store' });
+        const response = await fetch(siteUrl('data/menu.json') + '?t=' + Date.now(), { cache: 'no-store' });
         if (!response.ok) throw new Error('menu.json no disponible');
         const menu = await response.json();
         const items = (menu.items || []).filter(item => item.published && item.id !== 'dashboard-legacy');

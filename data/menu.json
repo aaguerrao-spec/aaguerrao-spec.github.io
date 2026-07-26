@@ -51,7 +51,7 @@
       "id": "riskguard",
       "title": "RiskGuard AI",
       "description": "Identificador y calificador de riesgos para asegurar entregas y mitigar eventos.",
-      "href": "/riskguard",
+      "href": "./riskguard.html",
       "icon": "ShieldAlert",
       "accent": "cyan",
       "published": true
@@ -69,7 +69,7 @@
       "id": "dashboard-legacy",
       "title": "Dashboard completo (legacy)",
       "description": "Versión HTML completa del dashboard con todas las vistas integradas.",
-      "href": "/dashboard.html",
+      "href": "./dashboard.html",
       "icon": "LayoutGrid",
       "accent": "violet",
       "published": true
