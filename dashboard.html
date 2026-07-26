@@ -145,10 +145,16 @@
     .flow-wrap { overflow-x: auto; }
     .flow { display: flex; gap: 14px; align-items: center; min-width: max-content; padding: 12px 4px; }
     .flow-step {
-      min-width: 180px; padding: 16px; border-radius: 16px; background: linear-gradient(180deg, rgba(27,36,64,.98), rgba(17,23,42,.98));
+      min-width: 200px; padding: 16px; border-radius: 16px; background: linear-gradient(180deg, rgba(27,36,64,.98), rgba(17,23,42,.98));
       border: 1px solid rgba(45,212,191,.18); position: relative;
     }
+    .flow-step.type-valor { border-color: rgba(45,212,191,.42); box-shadow: inset 0 0 0 1px rgba(45,212,191,.08); }
+    .flow-step.type-no-valor { border-color: rgba(251,191,36,.42); box-shadow: inset 0 0 0 1px rgba(251,191,36,.08); }
+    .flow-step.type-control { border-color: rgba(148,163,184,.35); }
     .flow-step .small { color: var(--faint); font-size: 12px; margin-bottom: 8px; }
+    .flow-step-meta { display: grid; gap: 4px; margin-top: 10px; font-size: 11px; color: var(--muted); }
+    .flow-step-meta span { display: block; }
+    .flow-step-badge { display: inline-block; margin-top: 10px; font-size: 10px; padding: 3px 8px; border-radius: 999px; }
     .flow-arrow { width: 36px; height: 2px; background: linear-gradient(90deg, rgba(45,212,191,.25), rgba(45,212,191,.8)); position: relative; }
     .flow-arrow::after { content: ""; position: absolute; right: -2px; top: -4px; border-left: 8px solid var(--primary); border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
     .process-loading { color: var(--primary); font-size: 13px; padding: 12px 0; }
@@ -743,7 +749,7 @@
         entry.status = 'Extrayendo texto...';
         renderFileList();
         entry.extractedText = await ProcessEngine.extractTextFromFile(entry.rawFile);
-        entry.steps = ProcessEngine.detectStepsFromText(entry.extractedText, entry.name);
+        entry.steps = ProcessEngine.parseProcessSteps(entry.extractedText, entry.name);
         entry.extractionSource = entry.extractedText.length > 30 ? 'contenido del documento' : 'nombre del archivo (texto insuficiente)';
         entry.status = entry.steps.length ? 'Analizado' : 'Sin pasos detectados';
       } catch (error) {
@@ -812,15 +818,41 @@
       });
     }
 
+    function normalizeStepData(step) {
+      if (window.ProcessEngine && typeof ProcessEngine.normalizeStep === 'function') {
+        return ProcessEngine.normalizeStep(step);
+      }
+      if (typeof step === 'string') return { name: step, duration: null, waitTime: null, responsible: null, type: 'unknown', typeLabel: null };
+      return step;
+    }
+
+    function stepTypeBadgeClass(type) {
+      if (type === 'no-valor') return 'warning';
+      if (type === 'valor') return 'info';
+      if (type === 'control') return 'success';
+      return 'info';
+    }
+
     function renderFlow(steps) {
       const flow = document.createElement('div');
       flow.className = 'flow-wrap';
       flow.innerHTML = `<div class="flow"></div>`;
       const inner = flow.querySelector('.flow');
-      steps.forEach((step, index) => {
+      steps.map(normalizeStepData).forEach((step, index) => {
         const stepEl = document.createElement('div');
-        stepEl.className = 'flow-step';
-        stepEl.innerHTML = `<div class="small">Paso ${index + 1}</div><strong>${escapeHtml(step)}</strong>`;
+        const typeClass = step.type === 'no-valor' ? 'type-no-valor' : step.type === 'valor' ? 'type-valor' : step.type === 'control' ? 'type-control' : '';
+        stepEl.className = `flow-step ${typeClass}`.trim();
+        const meta = [
+          step.duration ? `<span>Duracion: ${escapeHtml(step.duration)}</span>` : '',
+          step.waitTime ? `<span>Espera: ${escapeHtml(step.waitTime)}</span>` : '',
+          step.responsible ? `<span>Responsable: ${escapeHtml(step.responsible)}</span>` : '',
+        ].filter(Boolean).join('');
+        stepEl.innerHTML = `
+          <div class="small">Paso ${index + 1}</div>
+          <strong>${escapeHtml(step.name)}</strong>
+          ${meta ? `<div class="flow-step-meta">${meta}</div>` : ''}
+          ${step.typeLabel ? `<span class="flow-step-badge badge ${stepTypeBadgeClass(step.type)}">${escapeHtml(step.typeLabel)}</span>` : ''}
+        `;
         inner.appendChild(stepEl);
         if (index < steps.length - 1) {
           const arrow = document.createElement('div');
@@ -870,10 +902,14 @@
 
         const list = document.createElement('div');
         list.className = 'list';
-        steps.forEach((step, idx) => {
+        steps.map(normalizeStepData).forEach((step, idx) => {
           const item = document.createElement('div');
           item.className = 'list-item';
-          item.innerHTML = `<span>${idx + 1}. ${escapeHtml(step)}</span><span class="badge success">Detectado</span>`;
+          const details = [step.duration, step.waitTime, step.responsible].filter(Boolean).join(' · ');
+          item.innerHTML = `
+            <span>${idx + 1}. ${escapeHtml(step.name)}${details ? ` <span class="muted">(${escapeHtml(details)})</span>` : ''}</span>
+            <span class="badge ${stepTypeBadgeClass(step.type)}">${escapeHtml(step.typeLabel || 'Detectado')}</span>
+          `;
           list.appendChild(item);
         });
         summaryCard.appendChild(renderFlow(steps));
