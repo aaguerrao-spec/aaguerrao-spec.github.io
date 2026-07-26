@@ -536,7 +536,7 @@
 
     function siteUrl(relativePath) {
       const clean = String(relativePath || '').replace(/^\//, '');
-      return new URL(clean, window.location.href).href.split('?')[0];
+      return new URL(clean, window.location.origin + '/').href;
     }
 
     function sitePath(relativePath) {
