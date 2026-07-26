@@ -151,6 +151,8 @@
     .flow-step .small { color: var(--faint); font-size: 12px; margin-bottom: 8px; }
     .flow-arrow { width: 36px; height: 2px; background: linear-gradient(90deg, rgba(45,212,191,.25), rgba(45,212,191,.8)); position: relative; }
     .flow-arrow::after { content: ""; position: absolute; right: -2px; top: -4px; border-left: 8px solid var(--primary); border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+    .process-loading { color: var(--primary); font-size: 13px; padding: 12px 0; }
+    .extraction-note { font-size: 12px; color: var(--faint); margin-top: 8px; }
     .mobile-toggle { display: none; }
     .design-system {
       margin-bottom: 18px; background: linear-gradient(180deg, rgba(14,20,37,.95), rgba(11,16,32,.95));
@@ -319,17 +321,17 @@
       <section class="view" id="view-diagramador">
         <div class="page-header">
           <h2>Diagramador de Procesos</h2>
-          <p>Sube documentos desde tu computadora y genera un despliegue visual del proceso en frontend a partir del nombre del archivo.</p>
+          <p>Sube TXT o PDF para extraer pasos del contenido y generar un diagrama visual del proceso en el navegador.</p>
         </div>
         <div class="diagram-layout">
           <div class="card">
             <h3>Carga de documentos</h3>
             <div class="upload-zone" id="uploadZone" role="button" tabindex="0" aria-label="Zona para cargar documentos">
-              <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt" style="display:none" />
+              <input type="file" id="fileInput" multiple accept=".pdf,.txt,.csv" style="display:none" />
               <strong>Arrastra tus documentos aquí</strong>
               <p class="muted">o haz clic en "Seleccionar documento"</p>
               <button type="button" class="btn primary" id="selectFileBtn">Seleccionar documento</button>
-              <p class="muted" style="margin-top:12px;">Formatos permitidos: PDF, DOCX, DOC, XLSX, XLS, CSV, TXT</p>
+              <p class="muted" style="margin-top:12px;">Formatos con extraccion completa: PDF, TXT, CSV</p>
             </div>
             <div id="statusMessage" class="muted" style="margin-top:12px;">Sin documentos cargados.</div>
             <div class="file-list" id="fileList"></div>
@@ -495,6 +497,13 @@
     </main>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="./js/process-engine.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
   <script>
     let navButtons = document.querySelectorAll('.nav-btn');
     const views = document.querySelectorAll('.view');
@@ -589,7 +598,7 @@
       topbarSubtitle.textContent = dynamicSubtitles[name] || subtitles[name] || 'RiskGuard AI Suite';
       sidebar.classList.remove('open');
       if (name === 'diagramador' && uploadedFiles.length) {
-        generateDiagram();
+        void generateDiagram();
       }
     }
 
@@ -720,7 +729,39 @@
     let uploadedFiles = [];
     let selectedFileId = null;
 
-    const allowedExtensions = ['pdf', 'docx', 'doc', 'xlsx', 'xls', 'csv', 'txt'];
+    const allowedExtensions = ['pdf', 'txt', 'csv'];
+    let isGenerating = false;
+
+    async function extractAndDetectSteps(entry) {
+      if (!window.ProcessEngine || !entry.rawFile) {
+        entry.steps = ProcessEngine ? ProcessEngine.detectStepsFromFilename(entry.name) : detectProcessSteps(entry.name);
+        entry.extractionSource = 'nombre del archivo';
+        entry.extractedText = '';
+        return;
+      }
+      try {
+        entry.status = 'Extrayendo texto...';
+        renderFileList();
+        entry.extractedText = await ProcessEngine.extractTextFromFile(entry.rawFile);
+        entry.steps = ProcessEngine.detectStepsFromText(entry.extractedText, entry.name);
+        entry.extractionSource = entry.extractedText.length > 30 ? 'contenido del documento' : 'nombre del archivo (texto insuficiente)';
+        entry.status = entry.steps.length ? 'Analizado' : 'Sin pasos detectados';
+      } catch (error) {
+        entry.steps = ProcessEngine.detectStepsFromFilename(entry.name);
+        entry.extractionSource = 'nombre del archivo (fallback)';
+        entry.extractedText = '';
+        entry.status = 'Analizado (fallback)';
+        console.warn(error);
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
 
     function createFileId() {
       if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -741,20 +782,10 @@
     }
 
     function detectProcessSteps(filename) {
+      if (window.ProcessEngine) return ProcessEngine.detectStepsFromFilename(filename);
       const name = filename.toLowerCase();
-      if (name.includes('onboarding') || name.includes('cliente')) {
-        return ['Recepci├│n de solicitud', 'Validaci├│n inicial', 'Revisi├│n documental', 'Aprobaci├│n', 'Alta en sistema', 'Seguimiento'];
-      }
-      if (name.includes('riesgo') || name.includes('risk')) {
-        return ['Identificaci├│n de riesgo', 'Evaluaci├│n', 'Clasificaci├│n', 'Plan de tratamiento', 'Monitoreo', 'Cierre'];
-      }
-      if (name.includes('compra') || name.includes('proveedor')) {
-        return ['Solicitud de compra', 'Validaci├│n presupuestal', 'Cotizaci├│n', 'Aprobaci├│n', 'Orden de compra', 'Recepci├│n'];
-      }
-      if (name.includes('incidente')) {
-        return ['Registro', 'Clasificaci├│n', 'Asignaci├│n', 'Tratamiento', 'Validaci├│n', 'Cierre'];
-      }
-      return ['Ingreso del documento', 'Interpretaci├│n del flujo', 'Validaci├│n del proceso', 'Definici├│n de responsables', 'Control operativo', 'Cierre del despliegue'];
+      if (name.includes('incidente')) return ['Registro', 'Clasificacion', 'Asignacion', 'Tratamiento', 'Validacion', 'Cierre'];
+      return ['Ingreso del documento', 'Interpretacion del flujo', 'Validacion del proceso', 'Definicion de responsables', 'Control operativo', 'Cierre del despliegue'];
     }
 
     function renderFileList() {
@@ -768,14 +799,14 @@
         const el = document.createElement('div');
         el.className = `file-item ${file.id === selectedFileId ? 'active' : ''}`;
         el.innerHTML = `
-          <strong>${file.name}</strong>
-          <div class="muted" style="margin-top:6px; font-size:12px;">${file.size} ┬À ${file.date}</div>
-          <div style="margin-top:8px;"><span class="badge info">${file.status}</span></div>
+          <strong>${escapeHtml(file.name)}</strong>
+          <div class="muted" style="margin-top:6px; font-size:12px;">${escapeHtml(file.size)} · ${escapeHtml(file.date)}</div>
+          <div style="margin-top:8px;"><span class="badge info">${escapeHtml(file.status)}</span></div>
         `;
         el.addEventListener('click', () => {
           selectedFileId = file.id;
           renderFileList();
-          generateDiagram();
+          void generateDiagram();
         });
         fileList.appendChild(el);
       });
@@ -789,7 +820,7 @@
       steps.forEach((step, index) => {
         const stepEl = document.createElement('div');
         stepEl.className = 'flow-step';
-        stepEl.innerHTML = `<div class="small">Paso ${index + 1}</div><strong>${step}</strong>`;
+        stepEl.innerHTML = `<div class="small">Paso ${index + 1}</div><strong>${escapeHtml(step)}</strong>`;
         inner.appendChild(stepEl);
         if (index < steps.length - 1) {
           const arrow = document.createElement('div');
@@ -800,27 +831,49 @@
       return flow;
     }
 
-    function generateDiagram() {
+    async function generateDiagram() {
       try {
+        if (isGenerating) return;
         const file = uploadedFiles.find(f => f.id === selectedFileId);
         if (!file) {
           processSummary.textContent = 'Selecciona un documento para generar el diagrama.';
           diagramContainer.innerHTML = `<div class="empty-state"><div><h3>No hay diagrama generado</h3><p>Sube y selecciona un documento.</p></div></div>`;
           return;
         }
-        const steps = detectProcessSteps(file.name);
-        processSummary.textContent = `Proceso detectado a partir del archivo "${file.name}". Se genero un flujo estimado de ${steps.length} pasos.`;
+
+        isGenerating = true;
+        generateBtn.disabled = true;
+        generateBtn.textContent = 'Generando...';
+        diagramContainer.innerHTML = `<div class="process-loading">Analizando documento y construyendo flujo...</div>`;
+
+        if (!file.steps || !file.steps.length || file.status === 'Cargado') {
+          await extractAndDetectSteps(file);
+          renderFileList();
+        }
+
+        const steps = file.steps && file.steps.length ? file.steps : detectProcessSteps(file.name);
+        const source = file.extractionSource || 'nombre del archivo';
+        processSummary.textContent = `Proceso detectado desde ${source} ("${file.name}"). Flujo de ${steps.length} pasos.`;
+
         diagramContainer.innerHTML = '';
         const summaryCard = document.createElement('div');
         summaryCard.className = 'card';
         summaryCard.style.marginTop = '16px';
-        summaryCard.innerHTML = `<h3>Resumen del proceso detectado</h3><p class="muted">El sistema simulo el analisis del documento y desplego un proceso orientativo basado en el nombre del archivo.</p>`;
+        summaryCard.innerHTML = `<h3>Resumen del proceso detectado</h3><p class="muted">Pasos extraidos en frontend (compatible con GitHub Pages). Fuente: ${escapeHtml(source)}.</p>`;
+
+        if (file.extractedText && file.extractedText.length > 30) {
+          const preview = document.createElement('p');
+          preview.className = 'extraction-note';
+          preview.textContent = `Vista previa: ${file.extractedText.slice(0, 180).replace(/\s+/g, ' ')}...`;
+          summaryCard.appendChild(preview);
+        }
+
         const list = document.createElement('div');
         list.className = 'list';
         steps.forEach((step, idx) => {
           const item = document.createElement('div');
           item.className = 'list-item';
-          item.innerHTML = `<span>${idx + 1}. ${step}</span><span class="badge success">Detectado</span>`;
+          item.innerHTML = `<span>${idx + 1}. ${escapeHtml(step)}</span><span class="badge success">Detectado</span>`;
           list.appendChild(item);
         });
         summaryCard.appendChild(renderFlow(steps));
@@ -828,10 +881,14 @@
         diagramContainer.appendChild(summaryCard);
       } catch (error) {
         reportProcessError('No se pudo generar el diagrama del proceso.');
+      } finally {
+        isGenerating = false;
+        generateBtn.disabled = false;
+        generateBtn.textContent = 'Generar diagrama';
       }
     }
 
-    function handleFiles(fileListObj) {
+    async function handleFiles(fileListObj) {
       try {
         const files = [...fileListObj];
         const valid = files.filter(file => {
@@ -841,21 +898,30 @@
           return allowedExtensions.includes(ext);
         });
         if (!valid.length) {
-          statusMessage.textContent = 'No se cargaron archivos validos. Usa PDF, DOCX, DOC, XLSX, XLS, CSV o TXT.';
+          statusMessage.textContent = 'No se cargaron archivos validos. Usa PDF, TXT o CSV.';
           return;
         }
-        valid.forEach(file => {
-          uploadedFiles.unshift({
+
+        for (const file of valid) {
+          const entry = {
             id: createFileId(),
             name: file.name,
             size: formatSize(file.size),
             date: new Date().toLocaleString('es-ES'),
-            status: 'Cargado'
-          });
-        });
-        selectedFileId = uploadedFiles[0].id;
+            status: 'Cargado',
+            rawFile: file,
+            extractedText: '',
+            steps: [],
+            extractionSource: ''
+          };
+          uploadedFiles.unshift(entry);
+          selectedFileId = entry.id;
+          renderFileList();
+          await extractAndDetectSteps(entry);
+        }
+
         renderFileList();
-        generateDiagram();
+        await generateDiagram();
         fileInput.value = '';
       } catch (error) {
         reportProcessError('Error al procesar los documentos cargados.');
@@ -898,13 +964,13 @@
       if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
     });
 
-    generateBtn.addEventListener('click', generateDiagram);
+    generateBtn.addEventListener('click', () => void generateDiagram());
     clearBtn.addEventListener('click', () => {
       uploadedFiles = [];
       selectedFileId = null;
       fileInput.value = '';
       renderFileList();
-      generateDiagram();
+      void generateDiagram();
     });
 
     const generarProcedimiento = document.getElementById('generarProcedimiento');
